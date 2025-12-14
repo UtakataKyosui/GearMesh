@@ -1,0 +1,21 @@
+[package]
+name = "gear-mesh-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "CLI tool for gear-mesh"
+
+[[bin]]
+name = "gear-mesh"
+path = "src/main.rs"
+
+[dependencies]
+gear-mesh-core = { workspace = true }
+gear-mesh-generator = { workspace = true }
+clap = { workspace = true }
+toml = { workspace = true }
+notify = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/gear-mesh",
+    "crates/gear-mesh-core",
+    "crates/gear-mesh-derive",
+    "crates/gear-mesh-generator",
+    "crates/gear-mesh-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["UtakataKyosui"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/UtakataKyosui/GearMesh"
+description = "Next-generation Rust to TypeScript type definition sharing library"
+keywords = ["typescript", "codegen", "types", "tauri"]
+categories = ["development-tools", "web-programming"]
+
+[workspace.dependencies]
+# Core
+gear-mesh-core = { path = "crates/gear-mesh-core" }
+gear-mesh-derive = { path = "crates/gear-mesh-derive" }
+gear-mesh-generator = { path = "crates/gear-mesh-generator" }
+
+# Proc-macro
+syn = { version = "2.0", features = ["full", "parsing", "extra-traits"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# CLI
+clap = { version = "4.4", features = ["derive"] }
+toml = "0.8"
+
+# File watching
+notify = "6.1"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Testing
+pretty_assertions = "1.4"

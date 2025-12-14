@@ -1,0 +1,24 @@
+# Rust
+/**/target/
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated files
+bindings/
+*.ts.bak
+
+# Test artifacts
+tests/e2e/example-project/
+
+# Logs
+*.log

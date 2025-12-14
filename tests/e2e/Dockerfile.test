@@ -1,0 +1,29 @@
+FROM rust:latest
+
+# 必要なツールをインストール
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.jsをインストール（TypeScriptの検証用）
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g typescript
+
+# 作業ディレクトリを作成
+WORKDIR /workspace
+
+# gear-meshをコピー
+COPY . /workspace/gear-mesh
+
+# スクリプトに実行権限を付与
+RUN chmod +x /workspace/gear-mesh/*.sh
+
+# サンプルプロジェクトのディレクトリを作成
+RUN mkdir -p /workspace/example-project
+
+WORKDIR /workspace/example-project
+
+CMD ["/bin/bash"]

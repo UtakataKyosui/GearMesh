@@ -1,0 +1,11 @@
+[package]
+name = "gear-mesh-generator"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "TypeScript code generator for gear-mesh"
+
+[dependencies]
+gear-mesh-core = { workspace = true }
+thiserror = { workspace = true }
