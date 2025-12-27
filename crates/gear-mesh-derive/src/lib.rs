@@ -47,7 +47,7 @@ pub fn derive_gear_mesh(input: TokenStream) -> TokenStream {
 
             let expanded = quote! {
                 impl ::gear_mesh::GearMeshExport for #name {
-                    fn gear_mesh_type() -> ::gear_mesh_core::GearMeshType {
+                    fn gear_mesh_type() -> ::gear_mesh::GearMeshType {
                         let json = #type_json;
                         ::serde_json::from_str(json).expect("Failed to deserialize GearMeshType")
                     }
