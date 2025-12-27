@@ -80,15 +80,16 @@ impl ValidationRule {
     }
 
     /// Zodスキーマコードを生成
-    pub fn to_zod_schema(&self) -> String {
+    pub fn to_zod_schema(&self, is_bigint: bool) -> String {
         match self {
             ValidationRule::Range { min, max } => {
                 let mut schema = String::new();
+                let suffix = if is_bigint { "n" } else { "" };
                 if let Some(min) = min {
-                    schema.push_str(&format!(".min({min})"));
+                    schema.push_str(&format!(".min({min}{suffix})"));
                 }
                 if let Some(max) = max {
-                    schema.push_str(&format!(".max({max})"));
+                    schema.push_str(&format!(".max({max}{suffix})"));
                 }
                 schema
             }

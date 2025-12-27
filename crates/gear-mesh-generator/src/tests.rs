@@ -295,7 +295,7 @@ fn test_zod_schema_generation_with_validation_on_bigint() {
     assert!(output.contains("export const ValidatedBigIntSchema = z.object({"));
     // Expect z.bigint().min(10).max(100)
     assert!(
-        output.contains("val: z.bigint().min(10).max(100)"),
+        output.contains("val: z.bigint().min(10n).max(100n)"),
         "Validation rules failed for bigint, generated: {}",
         output
     );
