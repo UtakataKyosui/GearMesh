@@ -13,7 +13,7 @@ echo ""
 
 # Generate TypeScript types
 echo "🔄 Generating TypeScript types..."
-cargo run --bin gear-mesh-cli -- generate --input src --output ../frontend/src/types
+(cd ../../../crates/gear-mesh-cli && cargo run -- generate --input ../../examples/axum-react/backend/src --output ../../examples/axum-react/frontend/src/types)
 echo "✅ Types generated"
 echo ""
 
