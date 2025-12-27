@@ -30,72 +30,51 @@ impl ValidationGenerator {
     }
 
     fn field_to_zod(&self, field: &FieldInfo) -> String {
-        // Check if this is an Option type
         let is_option = field.optional;
 
-        // Get base type name, handling generics
-        let base_type_name = if !field.ty.generics.is_empty() {
-            // For generic types like Vec<T> or Option<T>, use the first generic argument
-            &field.ty.generics[0].name
+        // 対象となる型を決定（Optionの場合は中身を取り出す）
+        let target_type = if field.ty.name == "Option" && !field.ty.generics.is_empty() {
+            &field.ty.generics[0]
         } else {
-            &field.ty.name
+            &field.ty
         };
 
-        let base_type = match base_type_name.as_str() {
-            "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32" | "f64" => "z.number()",
-            "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => {
-                if self.config.use_bigint {
-                    "z.bigint()"
+        // 配列型かどうかの判定
+        let is_array = target_type.name == "Vec" || target_type.name == "Array";
+
+        let base_schema = if is_array {
+            if !target_type.generics.is_empty() {
+                let inner_type = &target_type.generics[0];
+                if is_primitive_type(&inner_type.name) {
+                    format!("z.array({})", self.get_zod_type(&inner_type.name))
                 } else {
-                    "z.number()"
+                    format!("z.array({}Schema)", inner_type.name)
                 }
+            } else {
+                "z.array(z.unknown())".to_string()
             }
-            "String" | "str" | "char" => "z.string()",
-            "bool" => "z.boolean()",
-            _ => {
-                // Check if it's a Vec/Array
-                if field.ty.name == "Vec" || field.ty.name == "Array" {
-                    // For arrays of custom types, use schema reference
-                    if !field.ty.generics.is_empty() {
-                        let inner_type = &field.ty.generics[0].name;
-                        if !is_primitive_type(inner_type) {
-                            let schema_ref = format!("{}Schema", inner_type);
-                            return if is_option {
-                                format!("z.array({}).nullable()", schema_ref)
-                            } else {
-                                format!("z.array({})", schema_ref)
-                            };
-                        }
-                    }
-                    return if is_option {
-                        "z.array(z.unknown()).nullable()".to_string()
-                    } else {
-                        "z.array(z.unknown())".to_string()
-                    };
-                }
-                // For custom types, use schema reference
-                if !is_primitive_type(base_type_name) {
-                    return if is_option {
-                        format!("{}Schema.nullable()", base_type_name)
-                    } else {
-                        format!("{}Schema", base_type_name)
-                    };
-                }
-                "z.unknown()"
-            }
+        } else if is_primitive_type(&target_type.name) {
+            self.get_zod_type(&target_type.name)
+        } else {
+            // カスタム型の場合はスキーマを参照
+            format!("{}Schema", target_type.name)
         };
 
-        // Check if the type is BigInt
+        // バリデーションルールの適用のための型判定（BigIntかどうか）
+        // 配列自体のバリデーションは未対応（lengthなど）、ここでは要素の型に対するバリデーションは考慮しづらい
+        // 現状のgear-mesh-coreの仕様では、validationsはフィールドにかかるもの。
+        // なので、配列の場合は配列自体へのルール（min_itemsなど）か、要素へのルールか曖昧。
+        // しかし、BigIntに対するバリデーション(min/max)は要素に対してかかるべきか？
+        // ここでは単純化して、ターゲットタイプがBigIntかどうかで判定。
         let is_bigint = self.config.use_bigint
             && matches!(
-                base_type_name.as_str(),
+                target_type.name.as_str(),
                 "i64" | "i128" | "u64" | "u128" | "isize" | "usize"
             );
 
-        let mut result = base_type.to_string();
+        let mut result = base_schema;
 
         // IMPORTANT: Add validation rules BEFORE nullable
-        // This ensures validations apply to the inner type, not the nullable wrapper
         for rule in &field.validations {
             result.push_str(&rule.to_zod_schema(is_bigint));
         }
@@ -106,6 +85,22 @@ impl ValidationGenerator {
         }
 
         result
+    }
+
+    fn get_zod_type(&self, type_name: &str) -> String {
+        match type_name {
+            "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32" | "f64" => "z.number()".to_string(),
+            "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => {
+                if self.config.use_bigint {
+                    "z.bigint()".to_string()
+                } else {
+                    "z.number()".to_string()
+                }
+            }
+            "String" | "str" | "char" => "z.string()".to_string(),
+            "bool" => "z.boolean()".to_string(),
+            _ => "z.unknown()".to_string(),
+        }
     }
 }
 

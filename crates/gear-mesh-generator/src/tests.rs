@@ -300,3 +300,52 @@ fn test_zod_schema_generation_with_validation_on_bigint() {
         output
     );
 }
+
+#[test]
+fn test_zod_vec_generation() {
+    let ty = GearMeshType {
+        name: "StringList".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "tags".to_string(),
+                    ty: TypeRef::with_generics("Vec", vec![TypeRef::new("String")]),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                },
+                FieldInfo {
+                    name: "scores".to_string(),
+                    ty: TypeRef::with_generics("Vec", vec![TypeRef::new("i32")]),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new().with_zod(true));
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("export const StringListSchema = z.object({"));
+
+    // Vec<String> -> z.array(z.string())
+    assert!(
+        output.contains("tags: z.array(z.string())"),
+        "Vec<String> should be z.array(z.string()), generated: {}",
+        output
+    );
+
+    // Vec<i32> -> z.array(z.number())
+    assert!(
+        output.contains("scores: z.array(z.number())"),
+        "Vec<i32> should be z.array(z.number()), generated: {}",
+        output
+    );
+}
