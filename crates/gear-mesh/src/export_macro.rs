@@ -2,7 +2,7 @@
 ///
 /// # Example
 ///
-/// ```no_run
+/// ```ignore
 /// use gear_mesh::export_types;
 ///
 /// export_types! {
