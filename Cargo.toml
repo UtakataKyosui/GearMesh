@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/gear-mesh",
     "crates/gear-mesh-core",
     "crates/gear-mesh-derive",
     "crates/gear-mesh-generator",

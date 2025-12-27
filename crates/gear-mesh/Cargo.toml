@@ -1,0 +1,25 @@
+[package]
+name = "gear-mesh"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Next-generation Rust to TypeScript type definition sharing library"
+readme = "../README.md"
+homepage = "https://github.com/UtakataKyosui/GearMesh"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+# Re-export all functionality from generator
+gear-mesh-generator = { workspace = true }
+
+# Re-export core types for convenience
+gear-mesh-core = { workspace = true }
+
+# Re-export derive macro
+gear-mesh-derive = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }

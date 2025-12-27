@@ -1,0 +1,63 @@
+# gear-mesh project configuration
+
+type: 'library'
+language: 'rust'
+tags: ['rust', 'facade']
+
+project:
+  name: 'gear-mesh'
+  description: 'Unified facade library for GearMesh'
+  owner: 'UtakataKyosui'
+  maintainers: ['UtakataKyosui']
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+
+tasks:
+  build:
+    command: 'cargo build --package gear-mesh'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'gear-mesh-generator:build'
+    options:
+      cache: true
+      runInCI: true
+
+  test:
+    command: 'cargo test --package gear-mesh'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - '~:build'
+    options:
+      cache: true
+      runInCI: true
+
+  lint:
+    command: 'cargo clippy --package gear-mesh --all-targets --all-features -- -D warnings'
+    inputs:
+      - '@group(sources)'
+    options:
+      cache: true
+      runInCI: true
+
+  format:
+    command: 'cargo fmt --package gear-mesh -- --check'
+    inputs:
+      - '@group(sources)'
+    options:
+      cache: true
+      runInCI: true
+
+  doc:
+    command: 'cargo doc --package gear-mesh --no-deps --all-features'
+    inputs:
+      - '@group(sources)'
+    outputs:
+      - 'target/doc/gear_mesh/**/*'
+    options:
+      cache: true
+      runInCI: false

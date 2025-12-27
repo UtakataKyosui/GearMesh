@@ -33,6 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         crate:
+          - gear-mesh
           - gear-mesh-core
           - gear-mesh-derive
           - gear-mesh-generator
