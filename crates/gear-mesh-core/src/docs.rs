@@ -58,10 +58,10 @@ impl DocComment {
                 if in_code_block {
                     // コードブロック終了
                     in_code_block = false;
-                    if let Some((ref section_name, _)) = current_section {
-                        if section_name == "Examples" || section_name == "Example" {
-                            examples.push(code_block_content.clone());
-                        }
+                    if let Some((ref section_name, _)) = current_section
+                        && (section_name == "Examples" || section_name == "Example")
+                    {
+                        examples.push(code_block_content.clone());
                     }
                     code_block_content.clear();
                 } else {
@@ -82,13 +82,14 @@ impl DocComment {
             // セクションヘッダの処理
             if let Some(stripped) = trimmed.strip_prefix("# ") {
                 // 前のセクションを保存
-                if let Some((name, content)) = current_section.take() {
-                    if name != "Examples" && name != "Example" {
-                        sections.push(DocSection {
-                            name,
-                            content: content.trim().to_string(),
-                        });
-                    }
+                if let Some((name, content)) = current_section.take()
+                    && name != "Examples"
+                    && name != "Example"
+                {
+                    sections.push(DocSection {
+                        name,
+                        content: content.trim().to_string(),
+                    });
                 }
                 current_section = Some((stripped.to_string(), String::new()));
                 parsing_summary = false;
@@ -121,13 +122,14 @@ impl DocComment {
         }
 
         // 最後のセクションを保存
-        if let Some((name, content)) = current_section {
-            if name != "Examples" && name != "Example" {
-                sections.push(DocSection {
-                    name,
-                    content: content.trim().to_string(),
-                });
-            }
+        if let Some((name, content)) = current_section
+            && name != "Examples"
+            && name != "Example"
+        {
+            sections.push(DocSection {
+                name,
+                content: content.trim().to_string(),
+            });
         }
 
         Self {

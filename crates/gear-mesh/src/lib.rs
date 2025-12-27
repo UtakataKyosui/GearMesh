@@ -86,7 +86,7 @@ pub use inventory;
 
 // Automatic type collection
 mod inventory_collect;
-pub use inventory_collect::{generate_types, generate_types_to_dir, TypeInfo};
+pub use inventory_collect::{TypeInfo, generate_types, generate_types_to_dir};
 
 // Output path registry for automatic generation
 mod output_registry;

@@ -61,11 +61,11 @@ impl TypeScriptGenerator {
     /// 単一の型を生成
     pub fn generate_type(&mut self, ty: &GearMeshType) {
         // JSDoc生成
-        if self.config.generate_jsdoc {
-            if let Some(ref docs) = ty.docs {
-                self.output.push_str(&docs.to_jsdoc());
-                self.output.push('\n');
-            }
+        if self.config.generate_jsdoc
+            && let Some(ref docs) = ty.docs
+        {
+            self.output.push_str(&docs.to_jsdoc());
+            self.output.push('\n');
         }
 
         match &ty.kind {
@@ -120,11 +120,11 @@ impl TypeScriptGenerator {
         let indent = &self.config.indent;
 
         // フィールドのJSDoc
-        if self.config.generate_jsdoc {
-            if let Some(ref docs) = field.docs {
-                self.output
-                    .push_str(&format!("{}{}\n", indent, docs.to_inline_jsdoc()));
-            }
+        if self.config.generate_jsdoc
+            && let Some(ref docs) = field.docs
+        {
+            self.output
+                .push_str(&format!("{}{}\n", indent, docs.to_inline_jsdoc()));
         }
 
         let field_name = field.serde_attrs.rename.as_ref().unwrap_or(&field.name);

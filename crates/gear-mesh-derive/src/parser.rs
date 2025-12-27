@@ -232,10 +232,10 @@ fn parse_type_ref(ty: &Type) -> TypeRef {
 
 /// Option<T>かどうかを判定
 fn is_option_type(ty: &Type) -> bool {
-    if let Type::Path(path) = ty {
-        if let Some(segment) = path.path.segments.last() {
-            return segment.ident == "Option";
-        }
+    if let Type::Path(path) = ty
+        && let Some(segment) = path.path.segments.last()
+    {
+        return segment.ident == "Option";
     }
     false
 }

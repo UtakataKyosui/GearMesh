@@ -34,11 +34,11 @@ pub enum TypeKind {
     Tuple(Vec<TypeRef>),
     /// 配列/Vec
     Array(Box<TypeRef>),
-    /// Option<T>
+    /// `Option<T>`
     Option(Box<TypeRef>),
-    /// Result<T, E>
+    /// `Result<T, E>`
     Result { ok: Box<TypeRef>, err: Box<TypeRef> },
-    /// HashMap<K, V>
+    /// `HashMap<K, V>`
     Map {
         key: Box<TypeRef>,
         value: Box<TypeRef>,

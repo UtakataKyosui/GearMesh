@@ -103,22 +103,21 @@ pub fn parse_validate_attrs(attrs: &[Attribute]) -> Result<Vec<ValidationRule>> 
 /// serde属性を解析してリネーム情報を取得
 pub fn parse_serde_rename(attrs: &[Attribute]) -> Option<String> {
     for attr in attrs {
-        if attr.path().is_ident("serde") {
-            if let Meta::List(list) = &attr.meta {
-                // シンプルな実装：rename = "..." を探す
-                let tokens = list.tokens.to_string();
-                if let Some(start) = tokens.find("rename") {
-                    if let Some(eq_pos) = tokens[start..].find('=') {
-                        let after_eq = &tokens[start + eq_pos + 1..];
-                        if let Some(quote_start) = after_eq.find('"') {
-                            if let Some(quote_end) = after_eq[quote_start + 1..].find('"') {
-                                return Some(
-                                    after_eq[quote_start + 1..quote_start + 1 + quote_end]
-                                        .to_string(),
-                                );
-                            }
-                        }
-                    }
+        if attr.path().is_ident("serde")
+            && let Meta::List(list) = &attr.meta
+        {
+            // シンプルな実装：rename = "..." を探す
+            let tokens = list.tokens.to_string();
+            if let Some(start) = tokens.find("rename")
+                && let Some(eq_pos) = tokens[start..].find('=')
+            {
+                let after_eq = &tokens[start + eq_pos + 1..];
+                if let Some(quote_start) = after_eq.find('"')
+                    && let Some(quote_end) = after_eq[quote_start + 1..].find('"')
+                {
+                    return Some(
+                        after_eq[quote_start + 1..quote_start + 1 + quote_end].to_string(),
+                    );
                 }
             }
         }
@@ -131,14 +130,12 @@ pub fn extract_doc_comments(attrs: &[Attribute]) -> String {
     attrs
         .iter()
         .filter_map(|attr| {
-            if attr.path().is_ident("doc") {
-                if let Meta::NameValue(nv) = &attr.meta {
-                    if let Expr::Lit(expr_lit) = &nv.value {
-                        if let Lit::Str(lit_str) = &expr_lit.lit {
-                            return Some(lit_str.value());
-                        }
-                    }
-                }
+            if attr.path().is_ident("doc")
+                && let Meta::NameValue(nv) = &attr.meta
+                && let Expr::Lit(expr_lit) = &nv.value
+                && let Lit::Str(lit_str) = &expr_lit.lit
+            {
+                return Some(lit_str.value());
             }
             None
         })
