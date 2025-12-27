@@ -85,7 +85,7 @@ jobs:
           toolchain: "1.90"
       
       - name: Install cargo-audit
-        run: cargo install cargo-audit --version 0.21.2
+        run: cargo install cargo-audit
       
       - name: Run security audit
         run: cargo audit
@@ -102,7 +102,7 @@ jobs:
           toolchain: "1.90"
       
       - name: Install cargo-deny
-        run: cargo install cargo-deny --version 0.17.0
+        run: cargo install cargo-deny
       
       - name: Check licenses and advisories
         run: cargo deny check
