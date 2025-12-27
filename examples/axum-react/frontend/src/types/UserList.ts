@@ -13,6 +13,6 @@ export interface UserList {
 // Zod Schema
 
 export const UserListSchema = z.object({
-    users: z.array(z.unknown()),
+    users: z.array(UserSchema),
     total: z.number(),
 });

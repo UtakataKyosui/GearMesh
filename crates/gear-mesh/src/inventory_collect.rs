@@ -115,7 +115,15 @@ pub fn generate_types_to_dir(output_dir: impl AsRef<std::path::Path>) -> std::io
         for dep in sorted_deps {
             // Skip self-reference
             if dep != &ty.name {
-                content.push_str(&format!("import type {{ {} }} from './{}';\n", dep, dep));
+                // Import both type and schema
+                if config.generate_zod {
+                    content.push_str(&format!(
+                        "import type {{ {} }} from './{}';\nimport {{ {}Schema }} from './{}';\n",
+                        dep, dep, dep, dep
+                    ));
+                } else {
+                    content.push_str(&format!("import type {{ {} }} from './{}';\n", dep, dep));
+                }
             }
         }
 

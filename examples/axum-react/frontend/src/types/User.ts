@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { UserId } from './UserId';
+import { UserIdSchema } from './UserId';
 
 
 /**
@@ -19,7 +20,7 @@ export interface User {
 // Zod Schema
 
 export const UserSchema = z.object({
-    id: z.unknown(),
+    id: UserIdSchema,
     name: z.string().min(1).max(20),
     email: z.string(),
     age: z.number().min(1).max(100).nullable(),

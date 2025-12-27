@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { User } from './User';
+import { UserSchema } from './User';
 
 
 /**
@@ -15,6 +16,6 @@ export interface CreateUserResponse {
 // Zod Schema
 
 export const CreateUserResponseSchema = z.object({
-    user: z.unknown(),
+    user: UserSchema,
     message: z.string(),
 });
