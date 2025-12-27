@@ -10,7 +10,7 @@ use crate::GeneratorConfig;
 /// TypeScript生成器
 pub struct TypeScriptGenerator {
     config: GeneratorConfig,
-    output: String,
+    pub output: String,
 }
 
 impl TypeScriptGenerator {

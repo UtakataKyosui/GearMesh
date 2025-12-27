@@ -193,8 +193,8 @@ async fn delete_user(
 
 #[tokio::main]
 async fn main() {
-    // Generate TypeScript types automatically from all #[derive(GearMesh)] types
-    gear_mesh::generate_types("../frontend/src/types/generated.ts")
+    // Generate TypeScript types to separate files
+    gear_mesh::generate_types_to_dir("../frontend/src/types")
         .expect("Failed to generate TypeScript types");
 
     let state = AppState::new();
