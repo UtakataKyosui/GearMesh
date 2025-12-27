@@ -29,7 +29,7 @@ export const ActivityLogSchema = z.object({
     user_id: z.bigint(),
     action: z.string(),
     timestamp: z.bigint(),
-    score: z.bigint(),
+    score: z.bigint().min(0n).max(1000000000n),
     tags: z.array(z.string()),
     memo: z.string().nullable(),
 });
