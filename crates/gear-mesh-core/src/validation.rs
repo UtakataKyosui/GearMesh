@@ -87,6 +87,12 @@ impl ValidationRule {
                 let suffix = if is_bigint { "n" } else { "" };
                 if let Some(min) = min {
                     if is_bigint {
+                        debug_assert!(
+                            min.fract() == 0.0,
+                            "Fractional value ({}) provided for integer range validation, this will be truncated to {}",
+                            min,
+                            *min as i128
+                        );
                         schema.push_str(&format!(".min({}{suffix})", *min as i128));
                     } else {
                         schema.push_str(&format!(".min({min})"));
@@ -94,6 +100,12 @@ impl ValidationRule {
                 }
                 if let Some(max) = max {
                     if is_bigint {
+                        debug_assert!(
+                            max.fract() == 0.0,
+                            "Fractional value ({}) provided for integer range validation, this will be truncated to {}",
+                            max,
+                            *max as i128
+                        );
                         schema.push_str(&format!(".max({}{suffix})", *max as i128));
                     } else {
                         schema.push_str(&format!(".max({max})"));

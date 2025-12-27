@@ -32,8 +32,11 @@ impl ValidationGenerator {
     fn field_to_zod(&self, field: &FieldInfo) -> String {
         let is_option = field.optional;
 
-        // 対象となる型を決定
-        // Optionの場合は中身を取り出す（再帰的な解決はtype_to_zodに任せるが、最上位のOptionはここで扱う）
+        // Extract the target type for validation and schema generation.
+        // For Option<T> fields, we need to unwrap to get T here because:
+        // 1. Validation rules apply to the inner type T, not the Option wrapper
+        // 2. We need to append .nullable() AFTER validation rules (e.g., .min().max().nullable())
+        // 3. The recursive type_to_zod handles nested Options in complex types (e.g., Vec<Option<String>>)
         let target_type = if field.ty.name == "Option" && !field.ty.generics.is_empty() {
             &field.ty.generics[0]
         } else {
