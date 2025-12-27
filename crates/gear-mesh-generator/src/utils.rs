@@ -1,4 +1,4 @@
-/// プリミティブ型かどうかを判定する
+/// Checks if a type is a primitive type
 pub fn is_primitive_type(type_name: &str) -> bool {
     matches!(
         type_name,
@@ -32,7 +32,7 @@ pub fn is_primitive_type(type_name: &str) -> bool {
     )
 }
 
-/// 指定された型がBigIntとして扱われるべきかを判定する
+/// Checks if the specified type should be treated as a BigInt
 pub fn is_bigint_type(type_name: &str) -> bool {
     matches!(
         type_name,

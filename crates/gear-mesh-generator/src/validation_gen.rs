@@ -1,7 +1,7 @@
 use crate::GeneratorConfig;
 use gear_mesh_core::{FieldInfo, GearMeshType, TypeKind};
 
-/// Zodバリデーションスキーマ生成器
+/// Generator for Zod validation schemas
 pub struct ValidationGenerator {
     config: GeneratorConfig,
 }
@@ -11,7 +11,7 @@ impl ValidationGenerator {
         Self { config }
     }
 
-    /// Zodスキーマを生成
+    /// Generates a Zod schema
     pub fn generate_zod_schema(&self, ty: &GearMeshType) -> Option<String> {
         match &ty.kind {
             TypeKind::Struct(s) => {
@@ -62,7 +62,7 @@ impl ValidationGenerator {
         result
     }
 
-    /// TypeRefからZodスキーマを再帰的に生成
+    /// Recursively generates a Zod schema from a TypeRef
     fn type_to_zod(&self, type_ref: &gear_mesh_core::TypeRef) -> String {
         match type_ref.name.as_str() {
             // プリミティブ型
