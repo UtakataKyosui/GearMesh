@@ -127,11 +127,13 @@ See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for detailed 
 
 gear-mesh has comprehensive test coverage:
 
-- **41 total tests** across all crates
+- **56 total tests** across all crates
 - **17 unit tests** in `gear-mesh-core`
 - **11 unit tests** in `gear-mesh-generator`
 - **4 unit tests** in `gear-mesh-cli`
-- **9 integration tests** for end-to-end workflows
+- **24 integration tests** for end-to-end workflows
+  - 9 general integration tests
+  - 15 code generation tests (Rust → TypeScript)
 
 Run all tests:
 
