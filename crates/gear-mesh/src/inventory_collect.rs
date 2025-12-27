@@ -90,7 +90,7 @@ pub fn generate_types_to_dir(output_dir: impl AsRef<std::path::Path>) -> std::io
     // Generate config
     let config = GeneratorConfig::new().with_zod(true).with_validation(true);
 
-    let validator = crate::ValidationGenerator::new();
+    let validator = crate::ValidationGenerator::new(config.clone());
     let mut exports = Vec::new();
 
     for ty in &types {

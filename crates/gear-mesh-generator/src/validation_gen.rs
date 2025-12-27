@@ -1,11 +1,14 @@
+use crate::GeneratorConfig;
 use gear_mesh_core::{FieldInfo, GearMeshType, TypeKind};
 
 /// Zodバリデーションスキーマ生成器
-pub struct ValidationGenerator;
+pub struct ValidationGenerator {
+    config: GeneratorConfig,
+}
 
 impl ValidationGenerator {
-    pub fn new() -> Self {
-        Self
+    pub fn new(config: GeneratorConfig) -> Self {
+        Self { config }
     }
 
     /// Zodスキーマを生成
@@ -40,7 +43,13 @@ impl ValidationGenerator {
 
         let base_type = match base_type_name.as_str() {
             "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32" | "f64" => "z.number()",
-            "i64" | "i128" | "u64" | "u128" => "z.bigint()",
+            "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => {
+                if self.config.use_bigint {
+                    "z.bigint()"
+                } else {
+                    "z.number()"
+                }
+            }
             "String" | "str" | "char" => "z.string()",
             "bool" => "z.boolean()",
             _ => {
@@ -95,7 +104,7 @@ impl ValidationGenerator {
 
 impl Default for ValidationGenerator {
     fn default() -> Self {
-        Self::new()
+        Self::new(GeneratorConfig::default())
     }
 }
 
@@ -131,3 +140,4 @@ fn is_primitive_type(type_name: &str) -> bool {
             | "Cow"
     )
 }
+

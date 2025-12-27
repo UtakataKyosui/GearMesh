@@ -46,7 +46,7 @@ impl TypeScriptGenerator {
         // Zodスキーマを生成
         if self.config.generate_zod {
             self.output.push_str("// Zod Schemas\n\n");
-            let validator = crate::ValidationGenerator::new();
+            let validator = crate::ValidationGenerator::new(self.config.clone());
             for ty in types {
                 if let Some(schema) = validator.generate_zod_schema(ty) {
                     self.output.push_str(&schema);

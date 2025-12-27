@@ -202,3 +202,88 @@ fn test_branded_type_without_flag() {
     assert!(output.contains("export type UserId = number;"));
     assert!(!output.contains("Brand<"));
 }
+
+#[test]
+fn test_zod_schema_generation_for_usize() {
+    let ty = GearMeshType {
+        name: "SizeInfo".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "size".to_string(),
+                ty: TypeRef::new("usize"),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: Default::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new().with_zod(true));
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("export const SizeInfoSchema = z.object({"));
+    // usize should be bigint by default
+    assert!(output.contains("size: z.bigint()"), "Default usize should be z.bigint(), generated: {}", output);
+}
+
+#[test]
+fn test_zod_schema_generation_no_bigint() {
+    let ty = GearMeshType {
+        name: "BigNum".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "val".to_string(),
+                ty: TypeRef::new("i64"),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: Default::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    // Explicitly disable bigint
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new().with_zod(true).with_bigint(false));
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("export const BigNumSchema = z.object({"));
+    // i64 should be number when use_bigint is false
+    assert!(output.contains("val: z.number()"), "i64 should be z.number() when use_bigint=false, generated: {}", output);
+}
+
+#[test]
+fn test_zod_schema_generation_with_validation_on_bigint() {
+    let ty = GearMeshType {
+        name: "ValidatedBigInt".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "val".to_string(),
+                ty: TypeRef::new("u64"),
+                docs: None,
+                validations: vec![gear_mesh_core::ValidationRule::Range {
+                    min: Some(10.0),
+                    max: Some(100.0),
+                }],
+                optional: false,
+                serde_attrs: Default::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new().with_zod(true));
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("export const ValidatedBigIntSchema = z.object({"));
+    // Expect z.bigint().min(10).max(100)
+    assert!(output.contains("val: z.bigint().min(10).max(100)"), "Validation rules failed for bigint, generated: {}", output);
+}
