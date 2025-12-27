@@ -4,8 +4,7 @@
 
 use gear_mesh_core::{
     DocComment, EnumRepresentation, EnumType, EnumVariant, FieldInfo, GearMeshType, NewtypeType,
-    PrimitiveType, SerdeFieldAttrs, StructType, TypeAttributes, TypeKind, TypeRef, ValidationRule,
-    VariantContent,
+    SerdeFieldAttrs, StructType, TypeAttributes, TypeKind, TypeRef, ValidationRule, VariantContent,
 };
 use gear_mesh_generator::{GeneratorConfig, TypeScriptGenerator};
 

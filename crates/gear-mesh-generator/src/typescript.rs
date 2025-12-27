@@ -1,8 +1,8 @@
 //! TypeScriptコード生成の主要ロジック
 
 use gear_mesh_core::{
-    EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, PrimitiveType, StructType,
-    TypeKind, TypeRef, VariantContent,
+    EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, StructType, TypeKind,
+    TypeRef, VariantContent,
 };
 
 use crate::GeneratorConfig;
@@ -35,7 +35,7 @@ impl TypeScriptGenerator {
         // 各型を生成
         for ty in types {
             self.generate_type(ty);
-            self.output.push_str("\n");
+            self.output.push('\n');
         }
 
         self.output.clone()
@@ -330,7 +330,7 @@ impl TypeScriptGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gear_mesh_core::{DocComment, TypeAttributes};
+    use gear_mesh_core::TypeAttributes;
 
     #[test]
     fn test_generate_simple_struct() {

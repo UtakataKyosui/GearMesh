@@ -95,10 +95,9 @@ impl Config {
 /// 設定ファイルを初期化
 pub fn init_config() -> Result<()> {
     let config = Config::default();
-    let content = toml::to_string_pretty(&config)?;
+    let _content = toml::to_string_pretty(&config)?;
 
-    let config_content = format!(
-        r#"# gear-mesh configuration file
+    let config_content = r#"# gear-mesh configuration file
 
 # Input directory containing Rust source files
 input = "src"
@@ -123,8 +122,7 @@ generate_zod = false
 
 # Generate JSDoc comments
 generate_jsdoc = true
-"#
-    );
+"#;
 
     fs::write("gear-mesh.toml", config_content)?;
     println!("Created gear-mesh.toml");

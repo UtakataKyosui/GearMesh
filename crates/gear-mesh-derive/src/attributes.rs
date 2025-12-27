@@ -17,13 +17,11 @@ pub fn parse_gear_mesh_attrs(attrs: &[Attribute]) -> Result<TypeAttributes> {
                     result.branded = true;
                 } else if meta.path.is_ident("validate") {
                     result.validate = true;
-                } else if meta.path.is_ident("bigint") {
-                    if meta.input.peek(syn::Token![=]) {
-                        let _ = meta.input.parse::<syn::Token![=]>()?;
-                        let value: syn::LitStr = meta.input.parse()?;
-                        if value.value() == "auto" {
-                            result.bigint_auto = true;
-                        }
+                } else if meta.path.is_ident("bigint") && meta.input.peek(syn::Token![=]) {
+                    let _ = meta.input.parse::<syn::Token![=]>()?;
+                    let value: syn::LitStr = meta.input.parse()?;
+                    if value.value() == "auto" {
+                        result.bigint_auto = true;
                     }
                 }
                 Ok(())

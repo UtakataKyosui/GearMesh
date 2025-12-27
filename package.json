@@ -1,0 +1,31 @@
+{
+  "name": "gearmesh",
+  "version": "1.0.0",
+  "description": "Next-generation Rust to TypeScript type definition sharing library.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "keywords": [
+    "typescript",
+    "codegen",
+    "types",
+    "rust"
+  ],
+  "author": "UtakataKyosui",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UtakataKyosui/GearMesh"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.2.0",
+    "@commitlint/config-conventional": "^20.2.0",
+    "husky": "^9.1.7"
+  }
+}

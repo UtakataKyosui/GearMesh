@@ -80,7 +80,7 @@ impl DocComment {
             }
 
             // セクションヘッダの処理
-            if trimmed.starts_with("# ") {
+            if let Some(stripped) = trimmed.strip_prefix("# ") {
                 // 前のセクションを保存
                 if let Some((name, content)) = current_section.take() {
                     if name != "Examples" && name != "Example" {
@@ -90,7 +90,7 @@ impl DocComment {
                         });
                     }
                 }
-                current_section = Some((trimmed[2..].to_string(), String::new()));
+                current_section = Some((stripped.to_string(), String::new()));
                 parsing_summary = false;
                 continue;
             }

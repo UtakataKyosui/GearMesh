@@ -1,6 +1,6 @@
 //! Branded Type生成ヘルパー
 
-use gear_mesh_core::{GearMeshType, NewtypeType, TypeKind};
+use gear_mesh_core::{GearMeshType, TypeKind};
 
 /// Branded Type生成器
 pub struct BrandedTypeGenerator;
@@ -62,7 +62,7 @@ fn typescript_typeof(ts_type: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gear_mesh_core::{TypeAttributes, TypeRef};
+    use gear_mesh_core::{NewtypeType, TypeAttributes, TypeRef};
 
     #[test]
     fn test_generate_branded() {

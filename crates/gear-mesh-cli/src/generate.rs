@@ -35,7 +35,7 @@ pub fn run(input_dir: &Path, output_dir: &Path, config: &Config) -> Result<()> {
 // Generated at: {}
 
 "#,
-        chrono_lite::Datetime::now().to_string(),
+        chrono_lite::Datetime::now(),
     );
 
     let final_output = format!("{}{}", header, output);

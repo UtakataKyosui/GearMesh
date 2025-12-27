@@ -44,7 +44,7 @@ pub fn parse_type(input: &DeriveInput) -> Result<GearMeshType> {
             let variants = data
                 .variants
                 .iter()
-                .map(|v| parse_variant(v))
+                .map(parse_variant)
                 .collect::<Result<Vec<_>>>()?;
             TypeKind::Enum(EnumType {
                 variants,

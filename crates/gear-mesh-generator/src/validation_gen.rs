@@ -1,6 +1,6 @@
 //! バリデーション関数生成
 
-use gear_mesh_core::{FieldInfo, GearMeshType, StructType, TypeKind, ValidationRule};
+use gear_mesh_core::{FieldInfo, GearMeshType, StructType, TypeKind};
 
 /// バリデーション生成器
 pub struct ValidationGenerator {
@@ -157,7 +157,7 @@ impl Default for ValidationGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gear_mesh_core::{TypeAttributes, TypeRef};
+    use gear_mesh_core::{TypeAttributes, TypeRef, ValidationRule};
 
     #[test]
     fn test_generate_validation() {
