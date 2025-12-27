@@ -1,4 +1,4 @@
-name: Rust Quality Checks
+name: Rust CI
 
 on:
   push:
@@ -11,82 +11,91 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  quality-checks:
-    name: Code Quality
+  # Format check (runs once for entire workspace)
+  format:
+    name: Format Check
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-git-
-
-      - name: Cache target directory
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-target-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-target-
-
+          components: rustfmt
+      
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      - name: Run tests
-        run: cargo test --all-features --workspace
-
-      - name: Check documentation
-        run: cargo doc --no-deps --all-features --workspace
+  # Per-crate quality checks (parallel)
+  crate-checks:
+    name: ${{ matrix.crate }} - Quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate:
+          - gear-mesh-core
+          - gear-mesh-derive
+          - gear-mesh-generator
+          - gear-mesh-cli
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.crate }}
+      
+      - name: Clippy
+        run: cargo clippy --package ${{ matrix.crate }} --all-targets --all-features -- -D warnings
+      
+      - name: Test
+        run: cargo test --package ${{ matrix.crate }} --all-features
+      
+      - name: Doc
+        run: cargo doc --package ${{ matrix.crate }} --no-deps --all-features
         env:
           RUSTDOCFLAGS: -D warnings
 
-      - name: Security audit
-        uses: rustsec/audit-check@v2
+  # Integration tests (runs once after crate checks)
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [crate-checks]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - uses: Swatinem/rust-cache@v2
+      
+      - name: Run all tests
+        run: cargo test --workspace --all-features
+
+  # Security audit
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: rustsec/audit-check@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+  # Dependency checks
   dependencies:
     name: Dependency Checks
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-outdated
-        run: cargo install cargo-outdated
-
-      - name: Check for outdated dependencies
-        run: cargo outdated --exit-code 1
-        continue-on-error: true
-
+      - uses: actions/checkout@v4
+      
+      - uses: dtolnay/rust-toolchain@stable
+      
       - name: Install cargo-deny
         run: cargo install cargo-deny
-
+      
       - name: Check licenses and advisories
         run: cargo deny check
