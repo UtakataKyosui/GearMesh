@@ -7,7 +7,7 @@ license.workspace = true
 description = "CLI tool for gear-mesh"
 
 [[bin]]
-name = "gear-mesh"
+name = "gear-mesh-generator"
 path = "src/main.rs"
 
 [dependencies]
@@ -19,3 +19,4 @@ notify = { workspace = true }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+

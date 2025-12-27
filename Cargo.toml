@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/gear-mesh",
     "crates/gear-mesh-core",
     "crates/gear-mesh-derive",
     "crates/gear-mesh-generator",
@@ -23,6 +22,7 @@ categories = ["development-tools", "web-programming"]
 gear-mesh-core = { path = "crates/gear-mesh-core" }
 gear-mesh-derive = { path = "crates/gear-mesh-derive" }
 gear-mesh-generator = { path = "crates/gear-mesh-generator" }
+
 
 # Proc-macro
 syn = { version = "2.0", features = ["full", "parsing", "extra-traits"] }

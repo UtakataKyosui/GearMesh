@@ -4,8 +4,12 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "TypeScript code generator for gear-mesh"
+description = "TypeScript code generator and main API for gear-mesh"
 
 [dependencies]
 gear-mesh-core = { workspace = true }
+gear-mesh-derive = { workspace = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
