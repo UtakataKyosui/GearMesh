@@ -70,7 +70,7 @@ export const ErrorResponseSchema = z.object({
 });
 
 export const UserListSchema = z.object({
-    users: z.unknown(),
+    users: z.array(z.unknown()),
     total: z.number(),
 });
 
@@ -80,15 +80,15 @@ export const CreateUserResponseSchema = z.object({
 });
 
 export const CreateUserRequestSchema = z.object({
-    name: z.string(),
+    name: z.string().min(1).max(20),
     email: z.string(),
-    age: z.unknown().nullable(),
+    age: z.number().nullable(),
 });
 
 export const UserSchema = z.object({
     id: z.unknown(),
     name: z.string().min(1).max(20),
     email: z.string(),
-    age: z.unknown().nullable(),
+    age: z.number().nullable(),
 });
 

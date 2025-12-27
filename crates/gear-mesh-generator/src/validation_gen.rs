@@ -124,23 +124,45 @@ impl ValidationGenerator {
     }
 
     fn field_to_zod(&self, field: &FieldInfo) -> String {
-        let base_type = match field.ty.name.as_str() {
+        // Check if this is an Option type
+        let is_option = field.optional;
+
+        // Get base type name, handling generics
+        let base_type_name = if !field.ty.generics.is_empty() {
+            // For generic types like Vec<T> or Option<T>, use the first generic argument
+            &field.ty.generics[0].name
+        } else {
+            &field.ty.name
+        };
+
+        let base_type = match base_type_name.as_str() {
             "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32" | "f64" => "z.number()",
             "i64" | "i128" | "u64" | "u128" => "z.bigint()",
             "String" | "str" | "char" => "z.string()",
             "bool" => "z.boolean()",
-            _ => "z.unknown()",
+            _ => {
+                // Check if it's a Vec/Array
+                if field.ty.name == "Vec" || field.ty.name == "Array" {
+                    return if is_option {
+                        "z.array(z.unknown()).nullable()".to_string()
+                    } else {
+                        "z.array(z.unknown())".to_string()
+                    };
+                }
+                // Custom types
+                "z.unknown()"
+            }
         };
 
         let mut result = base_type.to_string();
 
-        // バリデーションルールを追加
+        // Add validation rules
         for rule in &field.validations {
             result.push_str(&rule.to_zod_schema());
         }
 
-        // オプショナル
-        if field.optional {
+        // Add nullable for Option types
+        if is_option {
             result.push_str(".nullable()");
         }
 

@@ -39,10 +39,12 @@ pub struct User {
 #[derive(Debug, Deserialize, GearMesh)]
 pub struct CreateUserRequest {
     /// Display name
+    #[validate(length(min = 1, max = 20))]
     pub name: String,
     /// Email address
     pub email: String,
     /// Age (optional)
+    #[validate(range(min = 1, max = 100))]
     pub age: Option<i32>,
 }
 
