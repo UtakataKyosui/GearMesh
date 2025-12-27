@@ -140,4 +140,3 @@ fn is_primitive_type(type_name: &str) -> bool {
             | "Cow"
     )
 }
-

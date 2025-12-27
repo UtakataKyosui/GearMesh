@@ -227,7 +227,11 @@ fn test_zod_schema_generation_for_usize() {
 
     assert!(output.contains("export const SizeInfoSchema = z.object({"));
     // usize should be bigint by default
-    assert!(output.contains("size: z.bigint()"), "Default usize should be z.bigint(), generated: {}", output);
+    assert!(
+        output.contains("size: z.bigint()"),
+        "Default usize should be z.bigint(), generated: {}",
+        output
+    );
 }
 
 #[test]
@@ -250,12 +254,17 @@ fn test_zod_schema_generation_no_bigint() {
     };
 
     // Explicitly disable bigint
-    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new().with_zod(true).with_bigint(false));
+    let mut generator =
+        TypeScriptGenerator::new(GeneratorConfig::new().with_zod(true).with_bigint(false));
     let output = generator.generate(&[ty]);
 
     assert!(output.contains("export const BigNumSchema = z.object({"));
     // i64 should be number when use_bigint is false
-    assert!(output.contains("val: z.number()"), "i64 should be z.number() when use_bigint=false, generated: {}", output);
+    assert!(
+        output.contains("val: z.number()"),
+        "i64 should be z.number() when use_bigint=false, generated: {}",
+        output
+    );
 }
 
 #[test]
@@ -285,5 +294,9 @@ fn test_zod_schema_generation_with_validation_on_bigint() {
 
     assert!(output.contains("export const ValidatedBigIntSchema = z.object({"));
     // Expect z.bigint().min(10).max(100)
-    assert!(output.contains("val: z.bigint().min(10).max(100)"), "Validation rules failed for bigint, generated: {}", output);
+    assert!(
+        output.contains("val: z.bigint().min(10).max(100)"),
+        "Validation rules failed for bigint, generated: {}",
+        output
+    );
 }
