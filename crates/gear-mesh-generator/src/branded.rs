@@ -1,18 +1,20 @@
+//! Helpers for generating Branded Types.
+
 use crate::GeneratorConfig;
 use gear_mesh_core::{GearMeshType, TypeKind};
 
-/// Branded Type生成器
+/// Generator for Branded Types
 pub struct BrandedTypeGenerator {
     config: GeneratorConfig,
 }
 
 impl BrandedTypeGenerator {
-    /// コンストラクタ
+    /// Creates a new generator.
     pub fn new(config: GeneratorConfig) -> Self {
         Self { config }
     }
 
-    /// Branded Type用のヘルパーコードを生成
+    /// Generates helper code for Branded Types.
     pub fn generate_helpers() -> String {
         r#"// Branded Type utilities
 type Brand<T, B> = T & { readonly __brand: B };
@@ -29,7 +31,7 @@ export function isBranded<T, B extends string>(
         .to_string()
     }
 
-    /// 型から Branded Type コードを生成
+    /// Generates code used for Branded Types from a Type.
     pub fn generate(ty: &GearMeshType, inner_ts_type: &str) -> Option<String> {
         if !ty.attributes.branded {
             return None;
@@ -55,7 +57,7 @@ export function is{name}(value: unknown): value is {name} {{
         }
     }
 
-    /// Branded Type用のZodスキーマを生成
+    /// Generates a Zod schema for a Branded Type.
     pub fn generate_zod_schema(&self, ty: &GearMeshType) -> Option<String> {
         if !ty.attributes.branded {
             return None;

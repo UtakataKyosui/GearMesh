@@ -86,10 +86,18 @@ impl ValidationRule {
                 let mut schema = String::new();
                 let suffix = if is_bigint { "n" } else { "" };
                 if let Some(min) = min {
-                    schema.push_str(&format!(".min({min}{suffix})"));
+                    if is_bigint {
+                        schema.push_str(&format!(".min({}{suffix})", *min as i128));
+                    } else {
+                        schema.push_str(&format!(".min({min})"));
+                    }
                 }
                 if let Some(max) = max {
-                    schema.push_str(&format!(".max({max}{suffix})"));
+                    if is_bigint {
+                        schema.push_str(&format!(".max({}{suffix})", *max as i128));
+                    } else {
+                        schema.push_str(&format!(".max({max})"));
+                    }
                 }
                 schema
             }

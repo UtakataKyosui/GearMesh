@@ -66,7 +66,7 @@ impl ValidationGenerator {
     fn type_to_zod(&self, type_ref: &gear_mesh_core::TypeRef) -> String {
         match type_ref.name.as_str() {
             // プリミティブ型
-            name if crate::utils::is_primitive_type(name) => {
+            name if crate::utils::is_builtin_type(name) => {
                 // コレクション型は個別に処理
                 match name {
                     "Vec" | "Array" => {
@@ -80,7 +80,12 @@ impl ValidationGenerator {
                     "Option" => {
                         if !type_ref.generics.is_empty() {
                             let inner_schema = self.type_to_zod(&type_ref.generics[0]);
-                            format!("{}.nullable()", inner_schema)
+                            // Avoid generating a double-nullable schema like `z.string().nullable().nullable()`
+                            if inner_schema.ends_with(".nullable()") {
+                                inner_schema
+                            } else {
+                                format!("{}.nullable()", inner_schema)
+                            }
                         } else {
                             "z.unknown().nullable()".to_string()
                         }

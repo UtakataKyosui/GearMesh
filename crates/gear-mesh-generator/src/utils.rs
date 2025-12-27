@@ -1,5 +1,9 @@
-/// Checks if a type is a primitive type
-pub fn is_primitive_type(type_name: &str) -> bool {
+/// Checks if a type is a built-in Rust type that has special handling in the generator.
+///
+/// This is used to differentiate between standard library types (including primitives,
+/// collections, and smart pointers) and user-defined structs/enums which are expected
+/// to have a corresponding `...Schema` generated.
+pub fn is_builtin_type(type_name: &str) -> bool {
     matches!(
         type_name,
         "String"
@@ -32,7 +36,7 @@ pub fn is_primitive_type(type_name: &str) -> bool {
     )
 }
 
-/// Checks if the specified type should be treated as a BigInt
+/// Determines if the given type name should be treated as a `bigint` in TypeScript.
 pub fn is_bigint_type(type_name: &str) -> bool {
     matches!(
         type_name,
