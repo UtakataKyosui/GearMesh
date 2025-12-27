@@ -2,7 +2,7 @@
 
 ## Overview
 
-GearMesh is a Rust to TypeScript type definition sharing library with a layered architecture consisting of 4 crates.
+GearMesh is a Rust to TypeScript type definition sharing library with a layered architecture.
 
 ## Crate Structure
 
@@ -11,15 +11,12 @@ GearMesh/
 ├── crates/
 │   ├── gear-mesh-core          # Core types and IR
 │   ├── gear-mesh-derive        # Proc-macro
-│   ├── gear-mesh-generator     # Generator + Facade
-│   └── gear-mesh-cli           # CLI tool
+│   └── gear-mesh-generator     # Generator + Facade
 ```
 
 ### Dependency Graph
 
 ```
-gear-mesh-cli
-    ↓
 gear-mesh-generator (+ facade)
     ↓
     ├─→ gear-mesh-core
@@ -66,6 +63,7 @@ gear-mesh-generator (+ facade)
 - TypeScript type generation
 - Branded type generation
 - Validation function generation
+- Zod schema generation
 - JSDoc comment generation
 - **Facade**: Re-exports all core types and derive macro
 
@@ -74,19 +72,6 @@ gear-mesh-generator (+ facade)
 - `branded.rs`: Branded type generation
 - `validation_gen.rs`: Validation generation
 - `lib.rs`: Facade re-exports
-
-### gear-mesh-cli
-**Command-line interface**
-
-- `generate`: Generate TypeScript definitions
-- `watch`: Watch mode for auto-regeneration
-- `init`: Initialize configuration file
-
-**Key modules**:
-- `main.rs`: CLI entry point
-- `config.rs`: Configuration management
-- `generate.rs`: Generate command
-- `watch.rs`: Watch command
 
 ---
 
@@ -122,7 +107,7 @@ gear-mesh-generator (+ facade)
 │    - interface/type definitions                             │
 │    - JSDoc comments                                          │
 │    - Branded Types                                           │
-│    - Validation functions (optional)                         │
+│    - Validation functions / Zod Schemas                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -186,19 +171,14 @@ gear-mesh-generator (+ facade)
 - Generic types
 - Serde rename attributes
 - JSDoc generation
-- CLI (generate, watch, init)
-
-### 🚧 Partial Implementation
-
-- **Validation generation**: Infrastructure ready, full implementation pending
-- **Zod schema generation**: Infrastructure ready, full implementation pending
+- Zod schema generation
+- Validation rules
 
 ### 📝 Future Work
 
-1. **Validation & Zod** (v0.2.0)
-   - Complete validation function generation
-   - Complete Zod schema generation
+1. **Advanced Validation** (v0.2.0)
    - Custom validation rules
+   - Complex cross-field validation
 
 2. **Plugin System** (v0.3.0)
    - Plugin API design
@@ -227,32 +207,17 @@ pub struct GeneratorConfig {
 }
 ```
 
-### CLI Configuration (gear-mesh.toml)
-
-```toml
-[generator]
-use_bigint = true
-generate_branded = true
-generate_validation = false
-generate_zod = false
-generate_jsdoc = true
-
-[paths]
-input = "src"
-output = "bindings"
-```
-
 ---
 
 ## Testing Strategy
 
-### Unit Tests (32 tests)
+### Unit Tests
 - Test individual functions and modules
 - Located in each crate's `src/` directory
 
-### Integration Tests (28 tests)
+### Integration Tests
 - Test complete workflows
-- Located in `tests/` directories
+- Located in `tests/` directories and `crates/gear-mesh-generator/src/tests.rs`
 
 ### E2E Tests
 - Docker-based end-to-end testing
@@ -271,7 +236,6 @@ See [TESTING.md](TESTING.md) for details.
 
 ### Parallel Execution
 - GitHub Actions matrix strategy
-- 4 crates tested simultaneously
 - Faster CI feedback
 
 ### Build Times

@@ -5,6 +5,7 @@
 
 mod branded;
 mod typescript;
+pub mod utils;
 mod validation_gen;
 
 #[cfg(test)]

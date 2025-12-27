@@ -6,7 +6,7 @@ Thank you for your interest in contributing to gear-mesh! This document provides
 
 ### Prerequisites
 
-- Rust 1.70 or later
+- Rust 1.90 or later
 - Node.js 18+ and npm (for TypeScript validation)
 - Docker (optional, for E2E tests)
 
@@ -27,10 +27,6 @@ cargo build --workspace
 ```bash
 cargo test --workspace
 ```
-
-## Project Structure
-
-See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for detailed information about the project layout.
 
 ## Development Workflow
 
@@ -79,30 +75,11 @@ cargo clippy --all-targets --all-features
 - Use `#[cfg(test)]` module
 - Test edge cases and error conditions
 
-Example:
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_feature() {
-        // Test implementation
-    }
-}
-```
-
 ### Integration Tests
 
-- Place integration tests in `crates/gear-mesh/tests/`
+- Place integration tests in `crates/gear-mesh-generator/src/tests.rs` or `tests/`
 - Test complete workflows
 - Use realistic scenarios
-
-### E2E Tests
-
-- Modify `tests/e2e/test-e2e-simple.sh` for new scenarios
-- Ensure Docker tests pass
-- Document any new test cases
 
 ## Code Style
 
@@ -112,22 +89,6 @@ mod tests {
 - Use `cargo fmt` for formatting
 - Address all `cargo clippy` warnings
 - Write doc comments for public APIs
-
-Example:
-```rust
-/// Generates TypeScript code from a GearMeshType.
-///
-/// # Arguments
-///
-/// * `types` - A slice of GearMeshType to generate code for
-///
-/// # Returns
-///
-/// A String containing the generated TypeScript code
-pub fn generate(&mut self, types: &[GearMeshType]) -> String {
-    // Implementation
-}
-```
 
 ### TypeScript (Generated Code)
 
@@ -158,13 +119,6 @@ If adding TypeScript generation features:
 2. Add configuration options if needed
 3. Add tests in `tests.rs`
 
-### 4. CLI (gear-mesh-cli)
-
-If adding CLI features:
-1. Update command definitions in `main.rs`
-2. Add configuration options in `config.rs`
-3. Update `gear-mesh.toml` schema
-
 ## Documentation
 
 ### Code Documentation
@@ -189,16 +143,58 @@ If adding CLI features:
 4. Create git tag
 5. Publish to crates.io
 
-## Getting Help
-
-- Open an issue for bugs or feature requests
-- Join discussions in GitHub Discussions
-- Check existing issues and PRs
-
-## Code of Conduct
-
-Be respectful and constructive in all interactions. We aim to maintain a welcoming and inclusive community.
-
 ## License
 
 By contributing to gear-mesh, you agree that your contributions will be licensed under the same license as the project (MIT/Apache-2.0).
+
+## Getting Help
+
+If you need help or have questions about contributing:
+
+- **GitHub Issues**: Open an issue for bug reports or feature requests
+- **GitHub Discussions**: Use [Discussions](https://github.com/UtakataKyosui/GearMesh/discussions) for questions and general discussions
+- **Documentation**: Check the [docs/](docs/) directory for detailed documentation
+- **Examples**: Look at the [examples/](examples/) directory for usage examples
+
+When asking for help:
+- Provide a clear description of the problem
+- Include relevant code snippets or error messages
+- Mention your Rust and Node.js versions
+- Describe what you've already tried
+
+## Code of Conduct
+
+### Our Pledge
+
+We as members, contributors, and leaders pledge to make participation in our community a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, religion, or sexual identity and orientation.
+
+We pledge to act and interact in ways that contribute to an open, welcoming, diverse, inclusive, and healthy community.
+
+### Our Standards
+
+Examples of behavior that contributes to a positive environment:
+
+- Using welcoming and inclusive language
+- Being respectful of differing viewpoints and experiences
+- Gracefully accepting constructive criticism
+- Focusing on what is best for the community
+- Showing empathy towards other community members
+
+Examples of unacceptable behavior:
+
+- The use of sexualized language or imagery and unwelcome sexual attention or advances
+- Trolling, insulting/derogatory comments, and personal or political attacks
+- Public or private harassment
+- Publishing others' private information without explicit permission
+- Other conduct which could reasonably be considered inappropriate in a professional setting
+
+### Enforcement
+
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported by opening an issue or contacting the project maintainers. All complaints will be reviewed and investigated promptly and fairly.
+
+Project maintainers have the right and responsibility to remove, edit, or reject comments, commits, code, wiki edits, issues, and other contributions that are not aligned with this Code of Conduct.
+
+### Attribution
+
+This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.0.
+

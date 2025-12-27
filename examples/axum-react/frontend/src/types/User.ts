@@ -22,6 +22,6 @@ export interface User {
 export const UserSchema = z.object({
     id: UserIdSchema,
     name: z.string().min(1).max(20),
-    email: z.string(),
+    email: z.string().email(),
     age: z.number().min(1).max(100).nullable(),
 });

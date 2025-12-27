@@ -1,18 +1,20 @@
-//! Branded Type生成ヘルパー
+//! Helpers for generating Branded Types.
 
+use crate::GeneratorConfig;
 use gear_mesh_core::{GearMeshType, TypeKind};
 
-/// Branded Type生成器
-#[derive(Default)]
-pub struct BrandedTypeGenerator;
+/// Generator for Branded Types
+pub struct BrandedTypeGenerator {
+    config: GeneratorConfig,
+}
 
 impl BrandedTypeGenerator {
-    /// コンストラクタ
-    pub fn new() -> Self {
-        Self
+    /// Creates a new generator.
+    pub fn new(config: GeneratorConfig) -> Self {
+        Self { config }
     }
 
-    /// Branded Type用のヘルパーコードを生成
+    /// Generates helper code for Branded Types.
     pub fn generate_helpers() -> String {
         r#"// Branded Type utilities
 type Brand<T, B> = T & { readonly __brand: B };
@@ -29,7 +31,7 @@ export function isBranded<T, B extends string>(
         .to_string()
     }
 
-    /// 型から Branded Type コードを生成
+    /// Generates code used for Branded Types from a Type.
     pub fn generate(ty: &GearMeshType, inner_ts_type: &str) -> Option<String> {
         if !ty.attributes.branded {
             return None;
@@ -55,7 +57,7 @@ export function is{name}(value: unknown): value is {name} {{
         }
     }
 
-    /// Branded Type用のZodスキーマを生成
+    /// Generates a Zod schema for a Branded Type.
     pub fn generate_zod_schema(&self, ty: &GearMeshType) -> Option<String> {
         if !ty.attributes.branded {
             return None;
@@ -68,7 +70,13 @@ export function is{name}(value: unknown): value is {name} {{
             // 内部型に応じたZodスキーマを生成
             let base_schema = match inner_type.name.as_str() {
                 "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32" | "f64" => "z.number()",
-                "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => "z.number()",
+                "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => {
+                    if self.config.use_bigint {
+                        "z.bigint()"
+                    } else {
+                        "z.number()"
+                    }
+                }
                 "String" | "str" => "z.string()",
                 "bool" => "z.boolean()",
                 _ => "z.unknown()",
@@ -118,5 +126,29 @@ mod tests {
         assert!(output.is_some());
         let code = output.unwrap();
         assert!(code.contains("export type UserId = Brand<number, \"UserId\">"));
+    }
+
+    #[test]
+    fn test_generate_branded_zod_bigint() {
+        let ty = GearMeshType {
+            name: "BigId".to_string(),
+            kind: TypeKind::Newtype(NewtypeType {
+                inner: TypeRef::new("i64"),
+            }),
+            docs: None,
+            generics: vec![],
+            attributes: TypeAttributes {
+                branded: true,
+                ..Default::default()
+            },
+        };
+
+        let config = GeneratorConfig::new().with_bigint(true);
+        let generator = BrandedTypeGenerator::new(config);
+        let output = generator.generate_zod_schema(&ty);
+
+        assert!(output.is_some());
+        let code = output.unwrap();
+        assert!(code.contains("z.bigint().brand<\"BigId\">"));
     }
 }
