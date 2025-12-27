@@ -37,7 +37,6 @@ jobs:
           - gear-mesh-core
           - gear-mesh-derive
           - gear-mesh-generator
-          - gear-mesh-cli
     steps:
       - uses: actions/checkout@v4
       

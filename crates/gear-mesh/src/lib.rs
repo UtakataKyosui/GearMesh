@@ -80,3 +80,7 @@ pub use gear_mesh_generator::*;
 pub use gear_mesh_core::{DocComment, GearMeshType, TypeKind, ValidationRule};
 
 pub use gear_mesh_derive::GearMesh;
+
+// Export types macro for build-time type generation
+#[macro_use]
+mod export_macro;

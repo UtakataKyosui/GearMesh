@@ -189,6 +189,19 @@ async fn delete_user(
 
 #[tokio::main]
 async fn main() {
+    // Generate TypeScript types before starting server
+    gear_mesh::export_types! {
+        output = "../frontend/src/types/generated.ts",
+        types = [
+            UserId,
+            User,
+            CreateUserRequest,
+            CreateUserResponse,
+            UserList,
+            ErrorResponse,
+        ]
+    }
+
     let state = AppState::new();
 
     // CORS configuration

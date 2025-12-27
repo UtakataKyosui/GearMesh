@@ -47,33 +47,17 @@ Full-stack example demonstrating type-safe communication between Rust (Axum) and
 
 - Rust (1.75+)
 - Node.js (20+)
-- GearMesh CLI
 
-```bash
-cargo install gear-mesh-cli
-```
-
-### 1. Generate TypeScript Types
-
-From the `backend` directory:
-
-```bash
-cd backend
-gear-mesh generate
-```
-
-This generates `frontend/src/types/generated.ts` from Rust types.
-
-### 2. Start Backend
+### 1. Start Backend (Auto-generates Types)
 
 ```bash
 cd backend
 cargo run
 ```
 
-Server runs on `http://localhost:3000`
+The backend automatically generates TypeScript types on startup using the `export_types!` macro.
 
-### 3. Start Frontend
+### 2. Start Frontend
 
 ```bash
 cd frontend
@@ -186,9 +170,10 @@ const createUser = async (request: CreateUserRequest) => {
 ## Development Workflow
 
 1. **Define types in Rust** with `#[derive(GearMesh)]`
-2. **Run `gear-mesh generate`** to create TypeScript types
-3. **Use generated types** in React components
-4. **Enjoy type safety** across the stack!
+2. **List types in `export_types!` macro** in main.rs
+3. **Run backend** - Types are automatically generated
+4. **Use generated types** in React components
+5. **Enjoy type safety** across the stack!
 
 ## Benefits
 
