@@ -127,13 +127,20 @@ See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for detailed 
 
 gear-mesh has comprehensive test coverage:
 
-- **56 total tests** across all crates
+- **69 total tests** across all crates (28 passing + 8 ignored for future features)
 - **17 unit tests** in `gear-mesh-core`
 - **11 unit tests** in `gear-mesh-generator`
 - **4 unit tests** in `gear-mesh-cli`
-- **24 integration tests** for end-to-end workflows
+- **37 integration tests** for end-to-end workflows
   - 9 general integration tests
-  - 15 code generation tests (Rust → TypeScript)
+  - 28 code generation tests (Rust → TypeScript)
+    - 15 basic type tests (primitives, BigInt, Branded, collections, enums, JSDoc)
+    - 3 Tuple type tests
+    - 4 Tagged Union (Enum with data) tests
+    - 3 Generic type tests
+    - 3 Serde rename attribute tests
+    - 5 Validation rule tests (ignored - awaiting implementation)
+    - 3 Zod schema tests (ignored - awaiting implementation)
 
 Run all tests:
 

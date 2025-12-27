@@ -6,9 +6,11 @@
 
 `codegen_test.rs` は、Rust型定義から期待されるTypeScriptコードが正しく生成されることを検証する包括的なテストスイートです。TDD（テスト駆動開発）の原則に従い、様々な型パターンに対する期待値を明確に定義しています。
 
+**総テスト数**: 36テスト（28 passing + 8 ignored）
+
 ## テスト構成
 
-### 基本型テスト
+### Phase 1: 基本型テスト (15テスト)
 
 #### 1. プリミティブ型
 - **`test_simple_struct_with_primitives`**: `f64` → `number`
@@ -75,6 +77,78 @@
   - Vec型
   - JSDoc
   - すべての機能の統合
+
+### Phase 2: Tuple型テスト (3テスト)
+
+#### 11. Tuple型
+- **`test_tuple_2_elements`**: 2要素タプル
+  - `(f64, f64)` → `[number, number]`
+
+- **`test_tuple_3_elements`**: 3要素以上のタプル
+  - `(i32, String, bool)` → `[number, string, boolean]`
+
+- **`test_nested_tuple`**: ネストされたタプル
+  - `((i32, String), bool)` → `[[number, string], boolean]`
+
+### Phase 3: Tagged Unions (4テスト)
+
+#### 12. Enum with Data
+- **`test_enum_with_tuple_variant`**: Tuple variant
+  - `Result { Ok(T), Err(E) }` → `{ "Ok": T } | { "Err": E }`
+
+- **`test_enum_with_struct_variant`**: Struct variant
+  - `Message { Text { content: String } }` → `{ "Text": { content: string } }`
+
+- **`test_enum_mixed_variants`**: Mixed variants
+  - Unit, Tuple, Struct variantsの混在
+
+- **`test_enum_internal_tagged`**: Internal tagged
+  - `#[serde(tag = "type")]` → `{ type: "Create"; name: string }`
+
+### Phase 4: Generic Types (3テスト)
+
+#### 13. ジェネリック型
+- **`test_generic_single_param`**: 単一型パラメータ
+  - `Container<T>` → `interface Container<T>`
+
+- **`test_generic_multiple_params`**: 複数型パラメータ
+  - `Pair<T, U>` → `interface Pair<T, U>`
+
+- **`test_generic_with_constraints`**: 制約付き
+  - 制約は無視され、型パラメータのみ生成
+
+### Phase 5: Validation Rules (5テスト - Ignored)
+
+> **Note**: これらのテストは `#[ignore]` でマークされています。Validation関数生成機能の完全な実装後に有効化されます。
+
+#### 14. バリデーションルール
+- **`test_validation_range`**: 範囲チェック
+- **`test_validation_length`**: 文字列長チェック
+- **`test_validation_email`**: メールアドレス形式
+- **`test_validation_url`**: URL形式
+- **`test_validation_pattern`**: 正規表現パターン
+
+### Phase 6: Zod Schema (3テスト - Ignored)
+
+> **Note**: これらのテストは `#[ignore]` でマークされています。Zodスキーマ生成機能の完全な実装後に有効化されます。
+
+#### 15. Zodスキーマ生成
+- **`test_zod_basic_schema`**: 基本スキーマ
+- **`test_zod_with_validation`**: Validation付き
+- **`test_zod_optional_fields`**: Optional fields
+
+### Phase 7: Serde Attributes (3テスト)
+
+#### 16. Serde rename
+- **`test_serde_rename_field`**: フィールドのrename
+  - `user_id` → `userId`
+
+- **`test_serde_rename_mixed`**: Mixed (renameあり/なし)
+  - 一部のフィールドのみrename
+
+- **`test_serde_rename_with_optional`**: Optionalとの組み合わせ
+  - `email_address?` → `emailAddress?`
+
 
 ## テストヘルパー
 

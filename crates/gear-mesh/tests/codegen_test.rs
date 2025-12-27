@@ -742,3 +742,839 @@ fn test_complex_real_world_example() {
     assert_contains(&output, "/** Age (optional) */");
     assert_contains(&output, "/** User tags */");
 }
+
+// ============================================================================
+// Phase 1: Tuple Type Tests
+// ============================================================================
+
+#[test]
+fn test_tuple_2_elements() {
+    let ty = GearMeshType {
+        name: "Point".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "coords".to_string(),
+                ty: TypeRef::with_generics(
+                    "__tuple__",
+                    vec![TypeRef::new("f64"), TypeRef::new("f64")],
+                ),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: SerdeFieldAttrs::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export interface Point {");
+    assert_contains(&output, "coords: [number, number];");
+}
+
+#[test]
+fn test_tuple_3_elements() {
+    let ty = GearMeshType {
+        name: "Triple".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "value".to_string(),
+                ty: TypeRef::with_generics(
+                    "__tuple__",
+                    vec![
+                        TypeRef::new("i32"),
+                        TypeRef::new("String"),
+                        TypeRef::new("bool"),
+                    ],
+                ),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: SerdeFieldAttrs::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export interface Triple {");
+    assert_contains(&output, "value: [number, string, boolean];");
+}
+
+#[test]
+fn test_nested_tuple() {
+    let ty = GearMeshType {
+        name: "NestedTuple".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "data".to_string(),
+                ty: TypeRef::with_generics(
+                    "__tuple__",
+                    vec![
+                        TypeRef::with_generics(
+                            "__tuple__",
+                            vec![TypeRef::new("i32"), TypeRef::new("String")],
+                        ),
+                        TypeRef::new("bool"),
+                    ],
+                ),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: SerdeFieldAttrs::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export interface NestedTuple {");
+    assert_contains(&output, "data: [[number, string], boolean];");
+}
+
+// ============================================================================
+// Phase 2: Tagged Unions (Enum with Data)
+// ============================================================================
+
+#[test]
+fn test_enum_with_tuple_variant() {
+    let ty = GearMeshType {
+        name: "Result".to_string(),
+        kind: TypeKind::Enum(EnumType {
+            variants: vec![
+                EnumVariant {
+                    name: "Ok".to_string(),
+                    content: VariantContent::Tuple(vec![TypeRef::new("String")]),
+                    docs: None,
+                },
+                EnumVariant {
+                    name: "Err".to_string(),
+                    content: VariantContent::Tuple(vec![TypeRef::new("String")]),
+                    docs: None,
+                },
+            ],
+            representation: EnumRepresentation::External,
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export type Result =");
+    assert_contains(&output, "{ \"Ok\": string }");
+    assert_contains(&output, "{ \"Err\": string }");
+}
+
+#[test]
+fn test_enum_with_struct_variant() {
+    let ty = GearMeshType {
+        name: "Message".to_string(),
+        kind: TypeKind::Enum(EnumType {
+            variants: vec![
+                EnumVariant {
+                    name: "Text".to_string(),
+                    content: VariantContent::Struct(vec![FieldInfo {
+                        name: "content".to_string(),
+                        ty: TypeRef::new("String"),
+                        docs: None,
+                        validations: vec![],
+                        optional: false,
+                        serde_attrs: SerdeFieldAttrs::default(),
+                    }]),
+                    docs: None,
+                },
+                EnumVariant {
+                    name: "Image".to_string(),
+                    content: VariantContent::Struct(vec![FieldInfo {
+                        name: "url".to_string(),
+                        ty: TypeRef::new("String"),
+                        docs: None,
+                        validations: vec![],
+                        optional: false,
+                        serde_attrs: SerdeFieldAttrs::default(),
+                    }]),
+                    docs: None,
+                },
+            ],
+            representation: EnumRepresentation::External,
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export type Message =");
+    assert_contains(&output, "{ \"Text\": { content: string } }");
+    assert_contains(&output, "{ \"Image\": { url: string } }");
+}
+
+#[test]
+fn test_enum_mixed_variants() {
+    let ty = GearMeshType {
+        name: "Event".to_string(),
+        kind: TypeKind::Enum(EnumType {
+            variants: vec![
+                EnumVariant {
+                    name: "Click".to_string(),
+                    content: VariantContent::Unit,
+                    docs: None,
+                },
+                EnumVariant {
+                    name: "KeyPress".to_string(),
+                    content: VariantContent::Tuple(vec![TypeRef::new("String")]),
+                    docs: None,
+                },
+                EnumVariant {
+                    name: "Mouse".to_string(),
+                    content: VariantContent::Struct(vec![
+                        FieldInfo {
+                            name: "x".to_string(),
+                            ty: TypeRef::new("i32"),
+                            docs: None,
+                            validations: vec![],
+                            optional: false,
+                            serde_attrs: SerdeFieldAttrs::default(),
+                        },
+                        FieldInfo {
+                            name: "y".to_string(),
+                            ty: TypeRef::new("i32"),
+                            docs: None,
+                            validations: vec![],
+                            optional: false,
+                            serde_attrs: SerdeFieldAttrs::default(),
+                        },
+                    ]),
+                    docs: None,
+                },
+            ],
+            representation: EnumRepresentation::External,
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export type Event =");
+    assert_contains(&output, "\"Click\"");
+    assert_contains(&output, "{ \"KeyPress\": string }");
+    assert_contains(&output, "{ \"Mouse\": { x: number; y: number } }");
+}
+
+#[test]
+fn test_enum_internal_tagged() {
+    let ty = GearMeshType {
+        name: "Action".to_string(),
+        kind: TypeKind::Enum(EnumType {
+            variants: vec![
+                EnumVariant {
+                    name: "Create".to_string(),
+                    content: VariantContent::Struct(vec![FieldInfo {
+                        name: "name".to_string(),
+                        ty: TypeRef::new("String"),
+                        docs: None,
+                        validations: vec![],
+                        optional: false,
+                        serde_attrs: SerdeFieldAttrs::default(),
+                    }]),
+                    docs: None,
+                },
+                EnumVariant {
+                    name: "Delete".to_string(),
+                    content: VariantContent::Struct(vec![FieldInfo {
+                        name: "id".to_string(),
+                        ty: TypeRef::new("i32"),
+                        docs: None,
+                        validations: vec![],
+                        optional: false,
+                        serde_attrs: SerdeFieldAttrs::default(),
+                    }]),
+                    docs: None,
+                },
+            ],
+            representation: EnumRepresentation::Internal {
+                tag: "type".to_string(),
+            },
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export type Action =");
+    assert_contains(&output, "{ type: \"Create\"; name: string }");
+    assert_contains(&output, "{ type: \"Delete\"; id: number }");
+}
+
+// ============================================================================
+// Phase 3: Generic Types
+// ============================================================================
+
+#[test]
+fn test_generic_single_param() {
+    let ty = GearMeshType {
+        name: "Container".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "value".to_string(),
+                ty: TypeRef::new("T"),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: SerdeFieldAttrs::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![GenericParam {
+            name: "T".to_string(),
+            bounds: vec![],
+        }],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export interface Container<T> {");
+    assert_contains(&output, "value: T;");
+}
+
+#[test]
+fn test_generic_multiple_params() {
+    let ty = GearMeshType {
+        name: "Pair".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "first".to_string(),
+                    ty: TypeRef::new("T"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs::default(),
+                },
+                FieldInfo {
+                    name: "second".to_string(),
+                    ty: TypeRef::new("U"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs::default(),
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![
+            GenericParam {
+                name: "T".to_string(),
+                bounds: vec![],
+            },
+            GenericParam {
+                name: "U".to_string(),
+                bounds: vec![],
+            },
+        ],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export interface Pair<T, U> {");
+    assert_contains(&output, "first: T;");
+    assert_contains(&output, "second: U;");
+}
+
+#[test]
+fn test_generic_with_constraints() {
+    // TypeScriptでは制約を直接表現できないため、型パラメータのみ生成
+    let ty = GearMeshType {
+        name: "Wrapper".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "data".to_string(),
+                ty: TypeRef::new("T"),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: SerdeFieldAttrs::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![GenericParam {
+            name: "T".to_string(),
+            bounds: vec!["Clone".to_string(), "Debug".to_string()],
+        }],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    // 制約は無視され、型パラメータのみ生成される
+    assert_contains(&output, "export interface Wrapper<T> {");
+    assert_contains(&output, "data: T;");
+}
+
+// ============================================================================
+// Phase 4: Validation Rules
+// ============================================================================
+// Note: These tests are currently ignored as validation generation is not fully implemented
+
+#[test]
+#[ignore = "Validation generation not yet fully implemented"]
+fn test_validation_range() {
+    let ty = GearMeshType {
+        name: "User".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "age".to_string(),
+                ty: TypeRef::new("i32"),
+                docs: None,
+                validations: vec![ValidationRule::Range {
+                    min: Some(0.0),
+                    max: Some(150.0),
+                }],
+                optional: false,
+                serde_attrs: SerdeFieldAttrs::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes {
+            validate: true,
+            ..Default::default()
+        },
+    };
+
+    let config = GeneratorConfig::new()
+        .with_validation(true)
+        .with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    // Validation関数が生成される
+    assert_contains(&output, "export function validateUser");
+    assert_contains(&output, "obj.age >= 0");
+    assert_contains(&output, "obj.age <= 150");
+}
+
+#[test]
+#[ignore = "Validation generation not yet fully implemented"]
+fn test_validation_length() {
+    let ty = GearMeshType {
+        name: "User".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "name".to_string(),
+                ty: TypeRef::new("String"),
+                docs: None,
+                validations: vec![ValidationRule::Length {
+                    min: Some(3),
+                    max: Some(50),
+                }],
+                optional: false,
+                serde_attrs: SerdeFieldAttrs::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes {
+            validate: true,
+            ..Default::default()
+        },
+    };
+
+    let config = GeneratorConfig::new()
+        .with_validation(true)
+        .with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export function validateUser");
+    assert_contains(&output, "obj.name.length >= 3");
+    assert_contains(&output, "obj.name.length <= 50");
+}
+
+#[test]
+#[ignore = "Validation generation not yet fully implemented"]
+fn test_validation_email() {
+    let ty = GearMeshType {
+        name: "User".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "email".to_string(),
+                ty: TypeRef::new("String"),
+                docs: None,
+                validations: vec![ValidationRule::Email],
+                optional: false,
+                serde_attrs: SerdeFieldAttrs::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes {
+            validate: true,
+            ..Default::default()
+        },
+    };
+
+    let config = GeneratorConfig::new()
+        .with_validation(true)
+        .with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export function validateUser");
+    assert_contains(&output, ".test(obj.email)");
+    assert_contains(&output, "@");
+}
+
+#[test]
+#[ignore = "Validation generation not yet fully implemented"]
+fn test_validation_url() {
+    let ty = GearMeshType {
+        name: "Link".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "url".to_string(),
+                ty: TypeRef::new("String"),
+                docs: None,
+                validations: vec![ValidationRule::Url],
+                optional: false,
+                serde_attrs: SerdeFieldAttrs::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes {
+            validate: true,
+            ..Default::default()
+        },
+    };
+
+    let config = GeneratorConfig::new()
+        .with_validation(true)
+        .with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export function validateLink");
+    assert_contains(&output, ".test(obj.url)");
+    assert_contains(&output, "https?");
+}
+
+#[test]
+#[ignore = "Validation generation not yet fully implemented"]
+fn test_validation_pattern() {
+    let ty = GearMeshType {
+        name: "Phone".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "number".to_string(),
+                ty: TypeRef::new("String"),
+                docs: None,
+                validations: vec![ValidationRule::Pattern(r"^\d{3}-\d{4}$".to_string())],
+                optional: false,
+                serde_attrs: SerdeFieldAttrs::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes {
+            validate: true,
+            ..Default::default()
+        },
+    };
+
+    let config = GeneratorConfig::new()
+        .with_validation(true)
+        .with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export function validatePhone");
+    assert_contains(&output, r"^\d{3}-\d{4}$");
+    assert_contains(&output, ".test(obj.number)");
+}
+
+// ============================================================================
+// Phase 5: Zod Schema Generation
+// ============================================================================
+// Note: These tests are currently ignored as Zod generation is not fully implemented
+
+#[test]
+#[ignore = "Zod schema generation not yet fully implemented"]
+fn test_zod_basic_schema() {
+    let ty = GearMeshType {
+        name: "User".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "id".to_string(),
+                    ty: TypeRef::new("i32"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs::default(),
+                },
+                FieldInfo {
+                    name: "name".to_string(),
+                    ty: TypeRef::new("String"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs::default(),
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_zod(true).with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export const UserSchema = z.object({");
+    assert_contains(&output, "id: z.number()");
+    assert_contains(&output, "name: z.string()");
+}
+
+#[test]
+#[ignore = "Zod schema generation not yet fully implemented"]
+fn test_zod_with_validation() {
+    let ty = GearMeshType {
+        name: "User".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "age".to_string(),
+                    ty: TypeRef::new("i32"),
+                    docs: None,
+                    validations: vec![ValidationRule::Range {
+                        min: Some(0.0),
+                        max: Some(150.0),
+                    }],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs::default(),
+                },
+                FieldInfo {
+                    name: "email".to_string(),
+                    ty: TypeRef::new("String"),
+                    docs: None,
+                    validations: vec![ValidationRule::Email],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs::default(),
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_zod(true).with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export const UserSchema = z.object({");
+    assert_contains(&output, "age: z.number().min(0).max(150)");
+    assert_contains(&output, "email: z.string().email()");
+}
+
+#[test]
+#[ignore = "Zod schema generation not yet fully implemented"]
+fn test_zod_optional_fields() {
+    let ty = GearMeshType {
+        name: "User".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "id".to_string(),
+                    ty: TypeRef::new("i32"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs::default(),
+                },
+                FieldInfo {
+                    name: "email".to_string(),
+                    ty: TypeRef::with_generics("Option", vec![TypeRef::new("String")]),
+                    docs: None,
+                    validations: vec![],
+                    optional: true,
+                    serde_attrs: SerdeFieldAttrs::default(),
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_zod(true).with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    assert_contains(&output, "export const UserSchema = z.object({");
+    assert_contains(&output, "id: z.number()");
+    assert_contains(&output, "email: z.string().nullable()");
+}
+
+// ============================================================================
+// Phase 6: Serde Rename Attributes
+// ============================================================================
+
+#[test]
+fn test_serde_rename_field() {
+    let ty = GearMeshType {
+        name: "User".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "user_id".to_string(),
+                    ty: TypeRef::new("i32"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs {
+                        rename: Some("userId".to_string()),
+                        ..Default::default()
+                    },
+                },
+                FieldInfo {
+                    name: "user_name".to_string(),
+                    ty: TypeRef::new("String"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs {
+                        rename: Some("userName".to_string()),
+                        ..Default::default()
+                    },
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    // Serdeのrenameが適用される
+    assert_contains(&output, "export interface User {");
+    assert_contains(&output, "userId: number;");
+    assert_contains(&output, "userName: string;");
+    // 元の名前は使われない
+    assert_not_contains(&output, "user_id");
+    assert_not_contains(&output, "user_name");
+}
+
+#[test]
+fn test_serde_rename_mixed() {
+    let ty = GearMeshType {
+        name: "Config".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "api_key".to_string(),
+                    ty: TypeRef::new("String"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs {
+                        rename: Some("apiKey".to_string()),
+                        ..Default::default()
+                    },
+                },
+                FieldInfo {
+                    name: "timeout".to_string(),
+                    ty: TypeRef::new("i32"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: SerdeFieldAttrs::default(),
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    // renameされたフィールドとされていないフィールドが混在
+    assert_contains(&output, "apiKey: string;");
+    assert_contains(&output, "timeout: number;");
+}
+
+#[test]
+fn test_serde_rename_with_optional() {
+    let ty = GearMeshType {
+        name: "User".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "email_address".to_string(),
+                ty: TypeRef::with_generics("Option", vec![TypeRef::new("String")]),
+                docs: None,
+                validations: vec![],
+                optional: true,
+                serde_attrs: SerdeFieldAttrs {
+                    rename: Some("emailAddress".to_string()),
+                    ..Default::default()
+                },
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let config = GeneratorConfig::new().with_jsdoc(false);
+    let mut generator = TypeScriptGenerator::new(config);
+    let output = generator.generate(&[ty]);
+
+    // renameとoptionalの組み合わせ
+    assert_contains(&output, "emailAddress?: string | null;");
+}
