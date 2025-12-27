@@ -16,6 +16,10 @@ export interface ActivityLog {
     timestamp: bigint;
     /** スコア (範囲制限付き) */
     score: bigint;
+    /** タグリスト (配列のテスト) */
+    tags: string[];
+    /** メモ (オプショナルのテスト) */
+    memo?: string | null;
 }
 
 // Zod Schema
@@ -26,4 +30,6 @@ export const ActivityLogSchema = z.object({
     action: z.string(),
     timestamp: z.bigint(),
     score: z.bigint(),
+    tags: z.array(z.string()),
+    memo: z.string().nullable(),
 });

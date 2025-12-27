@@ -16,6 +16,10 @@ pub struct ActivityLog {
     /// スコア (範囲制限付き)
     #[gear_mesh(validate(range(min = 0, max = 1000000000)))]
     pub score: u64,
+    /// タグリスト (配列のテスト)
+    pub tags: Vec<String>,
+    /// メモ (オプショナルのテスト)
+    pub memo: Option<String>,
 }
 
 fn main() {
