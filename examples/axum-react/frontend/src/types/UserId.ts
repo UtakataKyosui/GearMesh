@@ -8,3 +8,7 @@ type Brand<T, B> = T & { readonly __brand: B };
  */
 export type UserId = Brand<number, "UserId">;
 export const UserId = (value: number): UserId => value as UserId;
+
+// Zod Schema
+
+export const UserIdSchema = z.number().brand<"UserId">();

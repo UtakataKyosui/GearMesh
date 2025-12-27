@@ -3,9 +3,15 @@
 use gear_mesh_core::{GearMeshType, TypeKind};
 
 /// Branded Type生成器
+#[derive(Default)]
 pub struct BrandedTypeGenerator;
 
 impl BrandedTypeGenerator {
+    /// コンストラクタ
+    pub fn new() -> Self {
+        Self
+    }
+
     /// Branded Type用のヘルパーコードを生成
     pub fn generate_helpers() -> String {
         r#"// Branded Type utilities
@@ -43,6 +49,35 @@ export function is{name}(value: unknown): value is {name} {{
                 name = name,
                 inner_ts_type = inner_ts_type,
                 ts_typeof = typescript_typeof(inner_ts_type),
+            ))
+        } else {
+            None
+        }
+    }
+
+    /// Branded Type用のZodスキーマを生成
+    pub fn generate_zod_schema(&self, ty: &GearMeshType) -> Option<String> {
+        if !ty.attributes.branded {
+            return None;
+        }
+
+        if let TypeKind::Newtype(newtype) = &ty.kind {
+            let name = &ty.name;
+            let inner_type = &newtype.inner;
+
+            // 内部型に応じたZodスキーマを生成
+            let base_schema = match inner_type.name.as_str() {
+                "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32" | "f64" => "z.number()",
+                "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => "z.number()",
+                "String" | "str" => "z.string()",
+                "bool" => "z.boolean()",
+                _ => "z.unknown()",
+            };
+
+            Some(format!(
+                r#"export const {}Schema = {}.brand<"{}">();
+"#,
+                name, base_schema, name
             ))
         } else {
             None

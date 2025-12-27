@@ -38,15 +38,18 @@ pub fn extract_type_dependencies(ty: &GearMeshType) -> HashSet<String> {
 }
 
 fn collect_type_refs(ty_ref: &TypeRef, deps: &mut HashSet<String>) {
-    // Skip primitive types
-    if is_primitive(&ty_ref.name) {
-        return;
+    // Check if this is a container type (Vec, Option, etc.)
+    let is_container = matches!(
+        ty_ref.name.as_str(),
+        "Vec" | "Option" | "Result" | "HashMap" | "HashSet" | "Box" | "Arc" | "Rc" | "Cow"
+    );
+
+    // If it's not a container and not a primitive, add it to dependencies
+    if !is_container && !is_primitive(&ty_ref.name) {
+        deps.insert(ty_ref.name.clone());
     }
 
-    // Add the type name
-    deps.insert(ty_ref.name.clone());
-
-    // Recursively collect from generics
+    // Always recursively collect from generics (even for containers)
     for generic in &ty_ref.generics {
         collect_type_refs(generic, deps);
     }
@@ -73,14 +76,5 @@ fn is_primitive(type_name: &str) -> bool {
             | "usize"
             | "f32"
             | "f64"
-            | "Vec"
-            | "Option"
-            | "Result"
-            | "HashMap"
-            | "HashSet"
-            | "Box"
-            | "Arc"
-            | "Rc"
-            | "Cow"
     )
 }

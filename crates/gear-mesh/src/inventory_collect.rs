@@ -93,9 +93,6 @@ pub fn generate_types_to_dir(output_dir: impl AsRef<std::path::Path>) -> std::io
     let validator = crate::ValidationGenerator::new();
     let mut exports = Vec::new();
 
-    // Check if we need Branded Type helper
-    let has_branded = types.iter().any(|t| t.attributes.branded);
-
     for ty in &types {
         let file_name = format!("{}.ts", ty.name);
         let file_path = output_dir.join(&file_name);
@@ -146,7 +143,14 @@ pub fn generate_types_to_dir(output_dir: impl AsRef<std::path::Path>) -> std::io
 
         // Generate Zod schema
         if config.generate_zod {
-            if let Some(schema) = validator.generate_zod_schema(ty) {
+            // Branded typeの場合は専用のスキーマ生成
+            if ty.attributes.branded {
+                let branded_gen = crate::BrandedTypeGenerator::new();
+                if let Some(schema) = branded_gen.generate_zod_schema(ty) {
+                    content.push_str("\n// Zod Schema\n\n");
+                    content.push_str(&schema);
+                }
+            } else if let Some(schema) = validator.generate_zod_schema(ty) {
                 content.push_str("\n// Zod Schema\n\n");
                 content.push_str(&schema);
             }
@@ -161,12 +165,6 @@ pub fn generate_types_to_dir(output_dir: impl AsRef<std::path::Path>) -> std::io
     let mut index_content = String::new();
     index_content.push_str("// Auto-generated index file\n");
     index_content.push_str("// Re-exports all types\n\n");
-
-    // Add Branded Type helper to index if needed
-    if has_branded {
-        index_content.push_str("// Branded Type helper\n");
-        index_content.push_str("type Brand<T, B> = T & { readonly __brand: B };\n\n");
-    }
 
     for type_name in &exports {
         index_content.push_str(&format!("export * from './{}';\n", type_name));

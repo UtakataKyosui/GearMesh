@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import type { User } from './User';
+import { UserSchema } from './User';
+
 
 /**
  * List of users
