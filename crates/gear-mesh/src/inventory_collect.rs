@@ -145,7 +145,7 @@ pub fn generate_types_to_dir(output_dir: impl AsRef<std::path::Path>) -> std::io
         if config.generate_zod {
             // Branded typeの場合は専用のスキーマ生成
             if ty.attributes.branded {
-                let branded_gen = crate::BrandedTypeGenerator::new();
+                let branded_gen = crate::BrandedTypeGenerator::new(config.clone());
                 if let Some(schema) = branded_gen.generate_zod_schema(ty) {
                     content.push_str("\n// Zod Schema\n\n");
                     content.push_str(&schema);

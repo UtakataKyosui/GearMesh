@@ -85,12 +85,19 @@ impl ValidationGenerator {
             }
         };
 
+        // Check if the type is BigInt
+        let is_bigint = self.config.use_bigint
+            && matches!(
+                base_type_name.as_str(),
+                "i64" | "i128" | "u64" | "u128" | "isize" | "usize"
+            );
+
         let mut result = base_type.to_string();
 
         // IMPORTANT: Add validation rules BEFORE nullable
         // This ensures validations apply to the inner type, not the nullable wrapper
         for rule in &field.validations {
-            result.push_str(&rule.to_zod_schema());
+            result.push_str(&rule.to_zod_schema(is_bigint));
         }
 
         // Add nullable for Option types AFTER validations

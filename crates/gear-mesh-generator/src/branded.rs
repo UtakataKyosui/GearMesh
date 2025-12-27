@@ -1,15 +1,15 @@
-//! Branded Type生成ヘルパー
-
+use crate::GeneratorConfig;
 use gear_mesh_core::{GearMeshType, TypeKind};
 
 /// Branded Type生成器
-#[derive(Default)]
-pub struct BrandedTypeGenerator;
+pub struct BrandedTypeGenerator {
+    config: GeneratorConfig,
+}
 
 impl BrandedTypeGenerator {
     /// コンストラクタ
-    pub fn new() -> Self {
-        Self
+    pub fn new(config: GeneratorConfig) -> Self {
+        Self { config }
     }
 
     /// Branded Type用のヘルパーコードを生成
@@ -68,7 +68,13 @@ export function is{name}(value: unknown): value is {name} {{
             // 内部型に応じたZodスキーマを生成
             let base_schema = match inner_type.name.as_str() {
                 "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32" | "f64" => "z.number()",
-                "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => "z.number()",
+                "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => {
+                    if self.config.use_bigint {
+                        "z.bigint()"
+                    } else {
+                        "z.number()"
+                    }
+                }
                 "String" | "str" => "z.string()",
                 "bool" => "z.boolean()",
                 _ => "z.unknown()",
@@ -118,5 +124,29 @@ mod tests {
         assert!(output.is_some());
         let code = output.unwrap();
         assert!(code.contains("export type UserId = Brand<number, \"UserId\">"));
+    }
+
+    #[test]
+    fn test_generate_branded_zod_bigint() {
+        let ty = GearMeshType {
+            name: "BigId".to_string(),
+            kind: TypeKind::Newtype(NewtypeType {
+                inner: TypeRef::new("i64"),
+            }),
+            docs: None,
+            generics: vec![],
+            attributes: TypeAttributes {
+                branded: true,
+                ..Default::default()
+            },
+        };
+
+        let config = GeneratorConfig::new().with_bigint(true);
+        let generator = BrandedTypeGenerator::new(config);
+        let output = generator.generate_zod_schema(&ty);
+
+        assert!(output.is_some());
+        let code = output.unwrap();
+        assert!(code.contains("z.bigint().brand<\"BigId\">"));
     }
 }
