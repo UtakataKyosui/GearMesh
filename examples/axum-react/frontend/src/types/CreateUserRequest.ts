@@ -16,6 +16,6 @@ export interface CreateUserRequest {
 
 export const CreateUserRequestSchema = z.object({
     name: z.string().min(1).max(20),
-    email: z.string(),
+    email: z.string().email(),
     age: z.number().min(1).max(100).nullable(),
 });

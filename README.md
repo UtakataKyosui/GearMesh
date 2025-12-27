@@ -96,7 +96,91 @@ fn main() {
 }
 ```
 
+## Validation
+
+gear-mesh supports automatic generation of Zod schemas with validation rules from Rust attributes.
+
+### Available Validation Rules
+
+| Validation | Rust Attribute | Generated Zod | Description |
+|------------|----------------|---------------|-------------|
+| **Range** | `#[validate(range(min = 0, max = 100))]` | `.min(0).max(100)` | Numeric range validation |
+| **Length** | `#[validate(length(min = 1, max = 20))]` | `.min(1).max(20)` | String length validation |
+| **Email** | `#[validate(email)]` | `.email()` | Email format validation |
+| **URL** | `#[validate(url)]` | `.url()` | URL format validation |
+| **Pattern** | `#[validate(pattern = "^[A-Z]")]` | `.regex(/^[A-Z]/)` | Regex pattern matching |
+
+### Usage Example
+
+```rust
+use gear_mesh::GearMesh;
+
+#[derive(GearMesh)]
+struct User {
+    /// User's display name (1-20 characters)
+    #[validate(length(min = 1, max = 20))]
+    pub name: String,
+    
+    /// User's email address
+    #[validate(email)]
+    pub email: String,
+    
+    /// User's age (1-150)
+    #[validate(range(min = 1, max = 150))]
+    pub age: i32,
+    
+    /// User's website (optional)
+    #[validate(url)]
+    pub website: Option<String>,
+}
+```
+
+### Generated Zod Schema
+
+```typescript
+import { z } from 'zod';
+
+export interface User {
+    /** User's display name (1-20 characters) */
+    name: string;
+    /** User's email address */
+    email: string;
+    /** User's age (1-150) */
+    age: number;
+    /** User's website (optional) */
+    website?: string | null;
+}
+
+export const UserSchema = z.object({
+    name: z.string().min(1).max(20),
+    email: z.string().email(),
+    age: z.number().min(1).max(150),
+    website: z.string().url().nullable(),
+});
+```
+
+### BigInt Validation
+
+When using `use_bigint` configuration, range validations automatically use BigInt literals:
+
+```rust
+#[derive(GearMesh)]
+struct Transaction {
+    #[validate(range(min = 0, max = 1000000000))]
+    pub amount: u64,  // Automatically becomes bigint in TypeScript
+}
+```
+
+Generated TypeScript:
+
+```typescript
+export const TransactionSchema = z.object({
+    amount: z.bigint().min(0n).max(1000000000n),
+});
+```
+
 ## Comparison with Existing Crates
+
 
 | Feature | ts-rs | typeshare | specta | **gear-mesh** |
 |---------|-------|-----------|--------|---------------|

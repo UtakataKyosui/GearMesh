@@ -29,6 +29,7 @@ pub struct User {
     #[validate(length(min = 1, max = 20))]
     pub name: String,
     /// User's email address
+    #[validate(email)]
     pub email: String,
     /// User's age (optional)
     #[validate(range(min = 1, max = 100))]
@@ -42,6 +43,7 @@ pub struct CreateUserRequest {
     #[validate(length(min = 1, max = 20))]
     pub name: String,
     /// Email address
+    #[validate(email)]
     pub email: String,
     /// Age (optional)
     #[validate(range(min = 1, max = 100))]
