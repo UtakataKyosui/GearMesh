@@ -12,4 +12,4 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # GearMesh for type sharing
-gear-mesh = { path = "../../crates/gear-mesh" }
+gear-mesh = { path = "../../../crates/gear-mesh" }
