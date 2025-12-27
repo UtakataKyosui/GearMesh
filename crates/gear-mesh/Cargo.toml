@@ -21,5 +21,9 @@ gear-mesh-core = { workspace = true }
 # Re-export derive macro
 gear-mesh-derive = { workspace = true }
 
+# Automatic type collection
+inventory = "0.3"
+once_cell = "1.19"
+
 [dev-dependencies]
 pretty_assertions = { workspace = true }

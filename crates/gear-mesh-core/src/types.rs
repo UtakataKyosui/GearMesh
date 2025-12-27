@@ -253,6 +253,9 @@ pub struct TypeAttributes {
     pub bigint_auto: bool,
     /// serde属性
     pub serde: SerdeTypeAttrs,
+    /// Output path for automatic TypeScript generation
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_path: Option<String>,
 }
 
 /// serde型属性

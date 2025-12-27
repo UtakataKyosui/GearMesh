@@ -2,10 +2,44 @@
 type Brand<T, B> = T & { readonly __brand: B };
 
 /**
- * User ID (Branded Type)
+ * Error response
  */
-export type UserId = Brand<number, "UserId">;
-export const UserId = (value: number): UserId => value as UserId;
+export interface ErrorResponse {
+    /** Error message */
+    error: string;
+}
+
+/**
+ * List of users
+ */
+export interface UserList {
+    /** All users */
+    users: User[];
+    /** Total count */
+    total: number;
+}
+
+/**
+ * Response after creating a user
+ */
+export interface CreateUserResponse {
+    /** The created user */
+    user: User;
+    /** Success message */
+    message: string;
+}
+
+/**
+ * Request to create a new user
+ */
+export interface CreateUserRequest {
+    /** Display name */
+    name: string;
+    /** Email address */
+    email: string;
+    /** Age (optional) */
+    age?: number | null;
+}
 
 /**
  * User information
@@ -22,42 +56,8 @@ export interface User {
 }
 
 /**
- * Request to create a new user
+ * User ID (Branded Type)
  */
-export interface CreateUserRequest {
-    /** Display name */
-    name: string;
-    /** Email address */
-    email: string;
-    /** Age (optional) */
-    age?: number | null;
-}
-
-/**
- * Response after creating a user
- */
-export interface CreateUserResponse {
-    /** The created user */
-    user: User;
-    /** Success message */
-    message: string;
-}
-
-/**
- * List of users
- */
-export interface UserList {
-    /** All users */
-    users: User[];
-    /** Total count */
-    total: number;
-}
-
-/**
- * Error response
- */
-export interface ErrorResponse {
-    /** Error message */
-    error: string;
-}
+export type UserId = Brand<number, "UserId">;
+export const UserId = (value: number): UserId => value as UserId;
 

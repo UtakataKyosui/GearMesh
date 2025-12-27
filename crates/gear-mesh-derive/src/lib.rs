@@ -56,9 +56,34 @@ pub fn derive_gear_mesh(input: TokenStream) -> TokenStream {
                         stringify!(#name)
                     }
                 }
+
+                // Register type with inventory for automatic collection
+                ::gear_mesh::inventory::submit! {
+                    ::gear_mesh::TypeInfo {
+                        get_type: || <#name as ::gear_mesh::GearMeshExport>::gear_mesh_type(),
+                        type_name: stringify!(#name),
+                    }
+                }
             };
 
-            TokenStream::from(expanded)
+            // If output path is specified, trigger automatic generation
+            let output_trigger = if let Some(output_path) = &gear_mesh_type.attributes.output_path {
+                quote! {
+                    // Trigger automatic type generation on first use
+                    const _: () = {
+                        ::gear_mesh::register_output(#output_path);
+                    };
+                }
+            } else {
+                quote! {}
+            };
+
+            let final_output = quote! {
+                #expanded
+                #output_trigger
+            };
+
+            TokenStream::from(final_output)
         }
         Err(err) => TokenStream::from(err.to_compile_error()),
     }

@@ -81,6 +81,17 @@ pub use gear_mesh_core::{DocComment, GearMeshType, TypeKind, ValidationRule};
 
 pub use gear_mesh_derive::GearMesh;
 
+// Re-export inventory for use in proc-macro
+pub use inventory;
+
+// Automatic type collection
+mod inventory_collect;
+pub use inventory_collect::{generate_types, TypeInfo};
+
+// Output path registry for automatic generation
+mod output_registry;
+pub use output_registry::register_output;
+
 // Export types macro for build-time type generation
 #[macro_use]
 mod export_macro;

@@ -23,6 +23,10 @@ pub fn parse_gear_mesh_attrs(attrs: &[Attribute]) -> Result<TypeAttributes> {
                     if value.value() == "auto" {
                         result.bigint_auto = true;
                     }
+                } else if meta.path.is_ident("output") && meta.input.peek(syn::Token![=]) {
+                    let _ = meta.input.parse::<syn::Token![=]>()?;
+                    let value: syn::LitStr = meta.input.parse()?;
+                    result.output_path = Some(value.value());
                 }
                 Ok(())
             })?;
