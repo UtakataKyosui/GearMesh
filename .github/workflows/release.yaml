@@ -57,3 +57,59 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # crates.ioに公開
+  publish-crates:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: create-release
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Run tests
+        run: cargo test --workspace --all-features
+      
+      - name: Publish gear-mesh-core
+        run: |
+          cd crates/gear-mesh-core
+          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      
+      - name: Wait for crates.io to index
+        run: sleep 120
+      
+      - name: Publish gear-mesh-derive
+        run: |
+          cd crates/gear-mesh-derive
+          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      
+      - name: Wait for crates.io to index
+        run: sleep 120
+      
+      - name: Publish gear-mesh-generator
+        run: |
+          cd crates/gear-mesh-generator
+          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      
+      - name: Wait for crates.io to index
+        run: sleep 120
+      
+      - name: Publish gear-mesh
+        run: |
+          cd crates/gear-mesh
+          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
