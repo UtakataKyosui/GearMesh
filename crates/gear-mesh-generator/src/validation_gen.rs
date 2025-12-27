@@ -32,45 +32,20 @@ impl ValidationGenerator {
     fn field_to_zod(&self, field: &FieldInfo) -> String {
         let is_option = field.optional;
 
-        // 対象となる型を決定（Optionの場合は中身を取り出す）
+        // 対象となる型を決定
+        // Optionの場合は中身を取り出す（再帰的な解決はtype_to_zodに任せるが、最上位のOptionはここで扱う）
         let target_type = if field.ty.name == "Option" && !field.ty.generics.is_empty() {
             &field.ty.generics[0]
         } else {
             &field.ty
         };
 
-        // 配列型かどうかの判定
-        let is_array = target_type.name == "Vec" || target_type.name == "Array";
-
-        let base_schema = if is_array {
-            if !target_type.generics.is_empty() {
-                let inner_type = &target_type.generics[0];
-                if is_primitive_type(&inner_type.name) {
-                    format!("z.array({})", self.get_zod_type(&inner_type.name))
-                } else {
-                    format!("z.array({}Schema)", inner_type.name)
-                }
-            } else {
-                "z.array(z.unknown())".to_string()
-            }
-        } else if is_primitive_type(&target_type.name) {
-            self.get_zod_type(&target_type.name)
-        } else {
-            // カスタム型の場合はスキーマを参照
-            format!("{}Schema", target_type.name)
-        };
+        // ベースとなるスキーマを生成
+        let base_schema = self.type_to_zod(target_type);
 
         // バリデーションルールの適用のための型判定（BigIntかどうか）
-        // 配列自体のバリデーションは未対応（lengthなど）、ここでは要素の型に対するバリデーションは考慮しづらい
-        // 現状のgear-mesh-coreの仕様では、validationsはフィールドにかかるもの。
-        // なので、配列の場合は配列自体へのルール（min_itemsなど）か、要素へのルールか曖昧。
-        // しかし、BigIntに対するバリデーション(min/max)は要素に対してかかるべきか？
-        // ここでは単純化して、ターゲットタイプがBigIntかどうかで判定。
-        let is_bigint = self.config.use_bigint
-            && matches!(
-                target_type.name.as_str(),
-                "i64" | "i128" | "u64" | "u128" | "isize" | "usize"
-            );
+        // NOTE: ここでの判定は最上位の型に対してのみ有効
+        let is_bigint = self.config.use_bigint && crate::utils::is_bigint_type(&target_type.name);
 
         let mut result = base_schema;
 
@@ -87,7 +62,54 @@ impl ValidationGenerator {
         result
     }
 
-    fn get_zod_type(&self, type_name: &str) -> String {
+    /// TypeRefからZodスキーマを再帰的に生成
+    fn type_to_zod(&self, type_ref: &gear_mesh_core::TypeRef) -> String {
+        match type_ref.name.as_str() {
+            // プリミティブ型
+            name if crate::utils::is_primitive_type(name) => {
+                // コレクション型は個別に処理
+                match name {
+                    "Vec" | "Array" => {
+                        if !type_ref.generics.is_empty() {
+                            let inner_schema = self.type_to_zod(&type_ref.generics[0]);
+                            format!("z.array({})", inner_schema)
+                        } else {
+                            "z.array(z.unknown())".to_string()
+                        }
+                    }
+                    "Option" => {
+                        if !type_ref.generics.is_empty() {
+                            let inner_schema = self.type_to_zod(&type_ref.generics[0]);
+                            format!("{}.nullable()", inner_schema)
+                        } else {
+                            "z.unknown().nullable()".to_string()
+                        }
+                    }
+                    "HashMap" | "BTreeMap" => {
+                        let value_schema = if type_ref.generics.len() >= 2 {
+                            self.type_to_zod(&type_ref.generics[1])
+                        } else {
+                            "z.unknown()".to_string()
+                        };
+                        // HashMap<K, V> -> z.record(V) (Key is always string in JS objects usually, but Zod supports record)
+                        format!("z.record({})", value_schema)
+                    }
+                    "HashSet" | "BTreeSet" => {
+                        if !type_ref.generics.is_empty() {
+                            format!("z.set({})", self.type_to_zod(&type_ref.generics[0]))
+                        } else {
+                            "z.set(z.unknown())".to_string()
+                        }
+                    }
+                    _ => self.get_zod_primitive_type(name),
+                }
+            }
+            // カスタム型
+            name => format!("{}Schema", name),
+        }
+    }
+
+    fn get_zod_primitive_type(&self, type_name: &str) -> String {
         match type_name {
             "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32" | "f64" => "z.number()".to_string(),
             "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => {
@@ -108,37 +130,4 @@ impl Default for ValidationGenerator {
     fn default() -> Self {
         Self::new(GeneratorConfig::default())
     }
-}
-
-fn is_primitive_type(type_name: &str) -> bool {
-    matches!(
-        type_name,
-        "String"
-            | "str"
-            | "bool"
-            | "char"
-            | "i8"
-            | "i16"
-            | "i32"
-            | "i64"
-            | "i128"
-            | "isize"
-            | "u8"
-            | "u16"
-            | "u32"
-            | "u64"
-            | "u128"
-            | "usize"
-            | "f32"
-            | "f64"
-            | "Vec"
-            | "Option"
-            | "Result"
-            | "HashMap"
-            | "HashSet"
-            | "Box"
-            | "Arc"
-            | "Rc"
-            | "Cow"
-    )
 }
