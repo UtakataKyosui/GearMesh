@@ -2,7 +2,7 @@
 
 Next-generation Rust to TypeScript type definition sharing library.
 
-![Rust](https://img.shields.io/badge/Rust-1.70%2B-orange)
+![Rust](https://img.shields.io/badge/Rust-1.90%2B-orange)
 ![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue)
 
 ## Features
@@ -12,8 +12,8 @@ Next-generation Rust to TypeScript type definition sharing library.
 | **Branded Types** | Convert Rust newtype patterns to TypeScript Branded Types |
 | **Doc Comments** | Rust doc comments → JSDoc |
 | **Validation** | Generate runtime validation functions |
+| **Zod Schema** | Generate Zod schemas for runtime validation |
 | **BigInt Support** | Automatically use `bigint` for `u64`/`i64` |
-| **Watch Mode** | Real-time regeneration on file changes |
 
 ## Installation
 
@@ -25,6 +25,8 @@ gear-mesh = "0.1"
 ```
 
 ## Quick Start
+
+### 1. Define your types
 
 ```rust
 use gear_mesh::GearMesh;
@@ -43,7 +45,19 @@ struct User {
 }
 ```
 
-Generated TypeScript:
+### 2. Generate TypeScript
+
+Create a `main.rs` (or a separate binary/test) to run the generation:
+
+```rust
+fn main() {
+    // Generate TypeScript types to the "generated" directory
+    gear_mesh::generate_types_to_dir("generated")
+        .expect("Failed to generate TypeScript types");
+}
+```
+
+### 3. Generated TypeScript
 
 ```typescript
 // Branded Type helper
@@ -63,33 +77,23 @@ export interface User {
 }
 ```
 
-## CLI Usage
-
-```bash
-# Initialize configuration
-gear-mesh init
-
-# Generate TypeScript definitions
-gear-mesh generate
-
-# Watch mode (auto-regenerate on changes)
-gear-mesh watch
-```
-
 ## Configuration
 
-Create `gear-mesh.toml` in your project root:
+You can customize the generation by using `GeneratorConfig`:
 
-```toml
-input = "src"
-output = "bindings"
-output_file = "types.ts"
+```rust
+use gear_mesh::{GeneratorConfig, generate_with_config};
 
-use_bigint = true
-generate_branded = true
-generate_validation = false
-generate_zod = false
-generate_jsdoc = true
+fn main() {
+    let config = GeneratorConfig::new()
+        .with_bigint(true)
+        .with_branded(true)
+        .with_zod(true) // Generate Zod schemas
+        .with_validation(true); // Generate validation functions
+
+    gear_mesh::generate_with_config("generated", config)
+        .expect("Failed to generate");
+}
 ```
 
 ## Comparison with Existing Crates
@@ -99,9 +103,9 @@ generate_jsdoc = true
 | Basic type conversion | ✅ | ✅ | ✅ | ✅ |
 | Branded Types | ❌ | ❌ | ❌ | ✅ |
 | Doc comment conversion | ❌ | ❌ | ❌ | ✅ |
+| Zod Schema | ❌ | ❌ | ❌ | ✅ |
 | Validation embedding | ❌ | ❌ | ❌ | ✅ |
 | Auto BigInt | Manual | Manual | Manual | ✅ Auto |
-| Watch mode | ❌ | ❌ | ❌ | ✅ |
 
 ## Crate Structure
 
@@ -109,38 +113,27 @@ generate_jsdoc = true
 - `gear-mesh-core` - Intermediate representation (IR)
 - `gear-mesh-derive` - `#[derive(GearMesh)]` proc-macro
 - `gear-mesh-generator` - TypeScript code generator
-- `gear-mesh-cli` - Command-line tool
 
 ## Implementation Status
 
-gear-mesh v0.1.0 implements all Phase 1 MVP features:
+gear-mesh v0.1.0 implements:
 
 - ✅ Basic type conversion
 - ✅ Branded Type generation
 - ✅ Doc comment conversion
 - ✅ BigInt support
-- ✅ Watch mode
+- ✅ Zod Schema generation
+- ✅ Validation rules
 
 See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for detailed status and [docs/FUTURE_ISSUES.md](docs/FUTURE_ISSUES.md) for planned features.
 
 ## Testing
 
-gear-mesh has comprehensive test coverage:
+gear-mesh has comprehensive test coverage updated regularly.
 
-- **69 total tests** across all crates (28 passing + 8 ignored for future features)
-- **17 unit tests** in `gear-mesh-core`
-- **11 unit tests** in `gear-mesh-generator`
-- **4 unit tests** in `gear-mesh-cli`
-- **37 integration tests** for end-to-end workflows
-  - 9 general integration tests
-  - 28 code generation tests (Rust → TypeScript)
-    - 15 basic type tests (primitives, BigInt, Branded, collections, enums, JSDoc)
-    - 3 Tuple type tests
-    - 4 Tagged Union (Enum with data) tests
-    - 3 Generic type tests
-    - 3 Serde rename attribute tests
-    - 5 Validation rule tests (ignored - awaiting implementation)
-    - 3 Zod schema tests (ignored - awaiting implementation)
+- **Unit tests** covering core logic, generator, and derive macros.
+- **Integration tests** validation the full pipeline from Rust types to TypeScript output.
+- **E2E tests** ensuring compatibility with real TypeScript projects using Docker.
 
 Run all tests:
 
@@ -148,13 +141,11 @@ Run all tests:
 cargo test --workspace
 ```
 
-Run E2E tests in Docker:
+Or using [moonrepo](https://moonrepo.dev/):
 
 ```bash
-./tests/e2e/run-docker-test.sh
+moon run :test
 ```
-
-See [docs/TESTING.md](docs/TESTING.md) for detailed test coverage information and [docs/E2E_TEST_RESULTS.md](docs/E2E_TEST_RESULTS.md) for end-to-end test results.
 
 ## License
 
