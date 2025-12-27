@@ -1,0 +1,10 @@
+[generator]
+use_bigint = false
+generate_branded = true
+generate_jsdoc = true
+generate_validation = false
+generate_zod = false
+
+[paths]
+input = "src"
+output = "../frontend/src/types"
