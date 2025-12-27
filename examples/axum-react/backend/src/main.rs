@@ -26,10 +26,12 @@ pub struct User {
     /// User's unique identifier
     pub id: UserId,
     /// User's display name
+    #[validate(length(min = 1, max = 20))]
     pub name: String,
     /// User's email address
     pub email: String,
     /// User's age (optional)
+    #[validate(range(min = 1, max = 100))]
     pub age: Option<i32>,
 }
 

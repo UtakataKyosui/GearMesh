@@ -25,6 +25,11 @@ impl TypeScriptGenerator {
     pub fn generate(&mut self, types: &[GearMeshType]) -> String {
         self.output.clear();
 
+        // Zod import
+        if self.config.generate_zod {
+            self.output.push_str("import { z } from 'zod';\n\n");
+        }
+
         // Branded Type用のヘルパーを追加
         if self.config.generate_branded && types.iter().any(|t| t.attributes.branded) {
             self.output.push_str("// Branded Type helper\n");
@@ -36,6 +41,18 @@ impl TypeScriptGenerator {
         for ty in types {
             self.generate_type(ty);
             self.output.push('\n');
+        }
+
+        // Zodスキーマを生成
+        if self.config.generate_zod {
+            self.output.push_str("// Zod Schemas\n\n");
+            let validator = crate::ValidationGenerator::new();
+            for ty in types {
+                if let Some(schema) = validator.generate_zod_schema(ty) {
+                    self.output.push_str(&schema);
+                    self.output.push('\n');
+                }
+            }
         }
 
         self.output.clone()

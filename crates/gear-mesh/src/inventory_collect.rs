@@ -34,8 +34,8 @@ pub fn generate_types(output_path: impl AsRef<std::path::Path>) -> std::io::Resu
         );
     }
 
-    // Generate TypeScript
-    let config = GeneratorConfig::new();
+    // Generate TypeScript with Zod schemas
+    let config = GeneratorConfig::new().with_zod(true).with_validation(true);
     let mut generator = TypeScriptGenerator::new(config);
     let output_content = generator.generate(&types);
 

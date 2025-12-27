@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 // Branded Type helper
 type Brand<T, B> = T & { readonly __brand: B };
 
@@ -60,4 +62,33 @@ export interface User {
  */
 export type UserId = Brand<number, "UserId">;
 export const UserId = (value: number): UserId => value as UserId;
+
+// Zod Schemas
+
+export const ErrorResponseSchema = z.object({
+    error: z.string(),
+});
+
+export const UserListSchema = z.object({
+    users: z.unknown(),
+    total: z.number(),
+});
+
+export const CreateUserResponseSchema = z.object({
+    user: z.unknown(),
+    message: z.string(),
+});
+
+export const CreateUserRequestSchema = z.object({
+    name: z.string(),
+    email: z.string(),
+    age: z.unknown().nullable(),
+});
+
+export const UserSchema = z.object({
+    id: z.unknown(),
+    name: z.string().min(1).max(20),
+    email: z.string(),
+    age: z.unknown().nullable(),
+});
 
