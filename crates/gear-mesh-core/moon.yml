@@ -1,0 +1,76 @@
+# gear-mesh-core project configuration
+
+# Project type and language
+type: 'library'
+language: 'rust'
+tags: ['rust', 'core']
+
+# Project metadata
+project:
+  name: 'gear-mesh-core'
+  description: 'Core intermediate representation and type system'
+  owner: 'UtakataKyosui'
+  maintainers: ['UtakataKyosui']
+  channel: '#gear-mesh'
+
+# File groups for task inputs
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'src/**/*'
+    - 'tests/**/*'
+  configs:
+    - 'Cargo.toml'
+
+# Tasks
+tasks:
+  # Build task
+  build:
+    command: 'cargo build --package gear-mesh-core'
+    inputs:
+      - '@group(sources)'
+    options:
+      cache: true
+      runInCI: true
+
+  # Test task
+  test:
+    command: 'cargo test --package gear-mesh-core'
+    inputs:
+      - '@group(tests)'
+    deps:
+      - '~:build'
+    options:
+      cache: true
+      runInCI: true
+
+  # Lint task (clippy)
+  lint:
+    command: 'cargo clippy --package gear-mesh-core --all-targets --all-features -- -D warnings'
+    inputs:
+      - '@group(sources)'
+    options:
+      cache: true
+      runInCI: true
+
+  # Format check task
+  format:
+    command: 'cargo fmt --package gear-mesh-core -- --check'
+    inputs:
+      - '@group(sources)'
+    options:
+      cache: true
+      runInCI: true
+
+  # Doc generation task
+  doc:
+    command: 'cargo doc --package gear-mesh-core --no-deps'
+    inputs:
+      - '@group(sources)'
+    outputs:
+      - 'target/doc/gear_mesh_core/**/*'
+    options:
+      cache: true
+      runInCI: false

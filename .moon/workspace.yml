@@ -1,0 +1,48 @@
+# Moonrepo workspace configuration
+
+# Version control settings
+vcs:
+  manager: 'git'
+  defaultBranch: 'main'
+  remoteCandidates:
+    - 'origin'
+    - 'upstream'
+
+# Project discovery
+projects:
+  # Rust crates
+  - 'crates/*'
+  
+  # Node.js tooling (Husky, Commitlint, ghats)
+  - '.'
+
+# Runner configuration
+runner:
+  # Cache lifetime for task outputs
+  cacheLifetime: '7 days'
+  
+  # Inherit colors for piped tasks
+  inheritColorsForPipedTasks: true
+  
+  # Log level
+  logRunningCommand: true
+
+# Notification settings
+notifier:
+  webhookUrl: null
+
+# Hasher configuration (for cache invalidation)
+hasher:
+  # Ignore patterns for hashing
+  ignorePatterns:
+    - '!**/.moon/cache'
+    - '!**/target'
+    - '!**/node_modules'
+    - '!**/.git'
+
+# Constraints
+constraints:
+  enforceProjectTypeRelationships: true
+  tagRelationships:
+    rust: ['rust']
+    node: ['node']

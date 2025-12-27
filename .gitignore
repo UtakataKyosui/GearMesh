@@ -26,6 +26,11 @@ tests/e2e/example-project/
 # Node.js
 node_modules/
 package-lock.json
+
+# Moonrepo
+.moon/cache/
+.moon/docker/
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

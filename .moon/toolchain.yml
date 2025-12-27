@@ -1,0 +1,51 @@
+# Toolchain configuration for Moonrepo
+
+# Automatically install tools when running moon
+auto-install: true
+
+# Node.js configuration
+node:
+  # Version managed by proto
+  version: '22.12.0'
+  
+  # Package manager
+  packageManager: 'npm'
+  
+  # npm version
+  npm:
+    version: '10.9.0'
+  
+  # Sync project dependencies
+  syncProjectWorkspaceDependencies: true
+  
+  # Dedupe on lockfile change
+  dedupeOnLockfileChange: true
+
+# Rust configuration
+rust:
+  # Version managed by proto
+  version: '1.83.0'
+  
+  # Sync toolchain config
+  syncToolchainConfig: true
+
+# TypeScript configuration (for ghats)
+typescript:
+  # Create missing tsconfig.json
+  createMissingConfig: true
+  
+  # Project config file name
+  projectConfigFileName: 'tsconfig.json'
+  
+  # Root config file name
+  rootConfigFileName: 'tsconfig.json'
+  
+  # Root options template
+  rootOptionsConfigFileName: 'tsconfig.options.json'
+  
+  # Sync project references
+  syncProjectReferences: true
+  
+  # Sync project references to paths
+  syncProjectReferencesToPaths: true
+

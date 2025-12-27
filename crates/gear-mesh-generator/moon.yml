@@ -1,0 +1,66 @@
+# gear-mesh-generator project configuration
+
+type: 'library'
+language: 'rust'
+tags: ['rust', 'codegen']
+
+project:
+  name: 'gear-mesh-generator'
+  description: 'TypeScript code generator'
+  owner: 'UtakataKyosui'
+  maintainers: ['UtakataKyosui']
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'src/**/*'
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build --package gear-mesh-generator'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'gear-mesh-core:build'
+    options:
+      cache: true
+      runInCI: true
+
+  test:
+    command: 'cargo test --package gear-mesh-generator'
+    inputs:
+      - '@group(tests)'
+    deps:
+      - '~:build'
+    options:
+      cache: true
+      runInCI: true
+
+  lint:
+    command: 'cargo clippy --package gear-mesh-generator --all-targets --all-features -- -D warnings'
+    inputs:
+      - '@group(sources)'
+    options:
+      cache: true
+      runInCI: true
+
+  format:
+    command: 'cargo fmt --package gear-mesh-generator -- --check'
+    inputs:
+      - '@group(sources)'
+    options:
+      cache: true
+      runInCI: true
+
+  doc:
+    command: 'cargo doc --package gear-mesh-generator --no-deps'
+    inputs:
+      - '@group(sources)'
+    outputs:
+      - 'target/doc/gear_mesh_generator/**/*'
+    options:
+      cache: true
+      runInCI: false

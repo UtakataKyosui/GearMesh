@@ -1,0 +1,66 @@
+# gear-mesh-derive project configuration
+
+type: 'library'
+language: 'rust'
+tags: ['rust', 'proc-macro']
+
+project:
+  name: 'gear-mesh-derive'
+  description: 'Procedural macro for GearMesh derive'
+  owner: 'UtakataKyosui'
+  maintainers: ['UtakataKyosui']
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - 'Cargo.toml'
+  tests:
+    - 'src/**/*'
+    - 'tests/**/*'
+
+tasks:
+  build:
+    command: 'cargo build --package gear-mesh-derive'
+    inputs:
+      - '@group(sources)'
+    deps:
+      - 'gear-mesh-core:build'
+    options:
+      cache: true
+      runInCI: true
+
+  test:
+    command: 'cargo test --package gear-mesh-derive'
+    inputs:
+      - '@group(tests)'
+    deps:
+      - '~:build'
+    options:
+      cache: true
+      runInCI: true
+
+  lint:
+    command: 'cargo clippy --package gear-mesh-derive --all-targets --all-features -- -D warnings'
+    inputs:
+      - '@group(sources)'
+    options:
+      cache: true
+      runInCI: true
+
+  format:
+    command: 'cargo fmt --package gear-mesh-derive -- --check'
+    inputs:
+      - '@group(sources)'
+    options:
+      cache: true
+      runInCI: true
+
+  doc:
+    command: 'cargo doc --package gear-mesh-derive --no-deps'
+    inputs:
+      - '@group(sources)'
+    outputs:
+      - 'target/doc/gear_mesh_derive/**/*'
+    options:
+      cache: true
+      runInCI: false

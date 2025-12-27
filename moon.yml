@@ -1,0 +1,90 @@
+# Root project configuration (Node.js tooling)
+
+type: 'tool'
+language: 'javascript'
+tags: ['node', 'tooling']
+
+project:
+  name: 'gear-mesh-root'
+  description: 'Root project for Node.js tooling (Husky, Commitlint)'
+  owner: 'UtakataKyosui'
+  maintainers: ['UtakataKyosui']
+
+fileGroups:
+  configs:
+    - 'package.json'
+    - 'commitlint.config.mjs'
+    - '.prototools'
+  hooks:
+    - '.husky/**/*'
+
+tasks:
+  # Install dependencies
+  install:
+    command: 'npm install'
+    inputs:
+      - 'package.json'
+      - 'package-lock.json'
+    outputs:
+      - 'node_modules'
+    options:
+      cache: true
+      runInCI: true
+
+  # Setup Husky hooks
+  setup-hooks:
+    command: 'npx husky install'
+    deps:
+      - '~:install'
+    inputs:
+      - '@group(hooks)'
+    options:
+      cache: false
+      runInCI: false
+
+  # Lint commit message (for CI)
+  lint-commit:
+    command: 'npx commitlint --from HEAD~1 --to HEAD --verbose'
+    deps:
+      - '~:install'
+    inputs:
+      - 'commitlint.config.mjs'
+    options:
+      cache: false
+      runInCI: true
+
+  # Run all Rust quality checks (no deps to avoid tag conflicts)
+  quality:
+    command: 'cargo fmt --all -- --check && cargo clippy --all-targets --all-features -- -D warnings'
+    inputs:
+      - 'crates/**/*.rs'
+      - 'Cargo.toml'
+      - 'crates/**/Cargo.toml'
+    options:
+      cache: true
+      runInCI: true
+
+  # Run all tests (no deps to avoid tag conflicts)
+  test-all:
+    command: 'cargo test --workspace'
+    inputs:
+      - 'crates/**/*.rs'
+      - 'Cargo.toml'
+      - 'crates/**/Cargo.toml'
+    options:
+      cache: true
+      runInCI: true
+
+  # Build all (no deps to avoid tag conflicts)
+  build-all:
+    command: 'cargo build --workspace'
+    inputs:
+      - 'crates/**/*.rs'
+      - 'Cargo.toml'
+      - 'crates/**/Cargo.toml'
+    outputs:
+      - 'target/debug/**/*'
+    options:
+      cache: true
+      runInCI: true
+
