@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt
       
@@ -40,14 +40,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy
-      
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: ${{ matrix.crate }}
+          cache-key: ${{ matrix.crate }}
       
       - name: Clippy
         run: cargo clippy --package ${{ matrix.crate }} --all-targets --all-features -- -D warnings
@@ -68,9 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: dtolnay/rust-toolchain@stable
-      
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       
       - name: Run all tests
         run: cargo test --workspace --all-features
@@ -82,7 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       
       - name: Install cargo-audit
         run: cargo install cargo-audit --version 0.21.2
@@ -97,10 +91,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       
       - name: Install cargo-deny
-        run: cargo install cargo-deny
+        run: cargo install cargo-deny --version 0.17.0
       
       - name: Check licenses and advisories
         run: cargo deny check
