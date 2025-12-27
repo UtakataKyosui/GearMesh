@@ -3,9 +3,9 @@
 //! Rust型定義 → 中間表現 → TypeScriptコード生成までの統合テスト
 
 use gear_mesh_core::{
-    DocComment, EnumRepresentation, EnumType, EnumVariant, FieldInfo, GearMeshType,
-    NewtypeType, PrimitiveType, SerdeFieldAttrs, StructType, TypeAttributes, TypeKind,
-    TypeRef, ValidationRule, VariantContent,
+    DocComment, EnumRepresentation, EnumType, EnumVariant, FieldInfo, GearMeshType, NewtypeType,
+    PrimitiveType, SerdeFieldAttrs, StructType, TypeAttributes, TypeKind, TypeRef, ValidationRule,
+    VariantContent,
 };
 use gear_mesh_generator::{GeneratorConfig, TypeScriptGenerator};
 

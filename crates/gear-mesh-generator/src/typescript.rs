@@ -1,8 +1,8 @@
 //! TypeScriptコード生成の主要ロジック
 
 use gear_mesh_core::{
-    EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, PrimitiveType,
-    StructType, TypeKind, TypeRef, VariantContent,
+    EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, PrimitiveType, StructType,
+    TypeKind, TypeRef, VariantContent,
 };
 
 use crate::GeneratorConfig;
@@ -80,7 +80,11 @@ impl TypeScriptGenerator {
         } else {
             format!(
                 "<{}>",
-                generics.iter().map(|g| g.name.as_str()).collect::<Vec<_>>().join(", ")
+                generics
+                    .iter()
+                    .map(|g| g.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
             )
         };
 
@@ -106,16 +110,14 @@ impl TypeScriptGenerator {
             }
         }
 
-        let field_name = field
-            .serde_attrs
-            .rename
-            .as_ref()
-            .unwrap_or(&field.name);
+        let field_name = field.serde_attrs.rename.as_ref().unwrap_or(&field.name);
         let optional = if field.optional { "?" } else { "" };
         let ts_type = self.type_ref_to_typescript(&field.ty);
 
-        self.output
-            .push_str(&format!("{}{}{}: {};\n", indent, field_name, optional, ts_type));
+        self.output.push_str(&format!(
+            "{}{}{}: {};\n",
+            indent, field_name, optional, ts_type
+        ));
     }
 
     /// 列挙型を生成
@@ -130,7 +132,11 @@ impl TypeScriptGenerator {
         } else {
             format!(
                 "<{}>",
-                generics.iter().map(|g| g.name.as_str()).collect::<Vec<_>>().join(", ")
+                generics
+                    .iter()
+                    .map(|g| g.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
             )
         };
 
@@ -168,7 +174,10 @@ impl TypeScriptGenerator {
                     let inner = self.type_ref_to_typescript(&types[0]);
                     format!("{{ \"{}\": {} }}", variant.name, inner)
                 } else {
-                    let inner: Vec<_> = types.iter().map(|t| self.type_ref_to_typescript(t)).collect();
+                    let inner: Vec<_> = types
+                        .iter()
+                        .map(|t| self.type_ref_to_typescript(t))
+                        .collect();
                     format!("{{ \"{}\": [{}] }}", variant.name, inner.join(", "))
                 }
             }
@@ -180,7 +189,11 @@ impl TypeScriptGenerator {
                         format!("{}: {}", f.name, ts_type)
                     })
                     .collect();
-                format!("{{ \"{}\": {{ {} }} }}", variant.name, field_strs.join("; "))
+                format!(
+                    "{{ \"{}\": {{ {} }} }}",
+                    variant.name,
+                    field_strs.join("; ")
+                )
             }
             (VariantContent::Struct(fields), EnumRepresentation::Internal { tag }) => {
                 let field_strs: Vec<_> = fields
@@ -204,8 +217,10 @@ impl TypeScriptGenerator {
     /// Branded Typeを生成
     fn generate_branded_type(&mut self, name: &str, newtype: &NewtypeType) {
         let inner_type = self.type_ref_to_typescript(&newtype.inner);
-        self.output
-            .push_str(&format!("export type {} = Brand<{}, \"{}\">;\n", name, inner_type, name));
+        self.output.push_str(&format!(
+            "export type {} = Brand<{}, \"{}\">;\n",
+            name, inner_type, name
+        ));
 
         // ヘルパー関数を生成
         self.output.push_str(&format!(
@@ -315,7 +330,7 @@ impl TypeScriptGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gear_mesh_core::{TypeAttributes, DocComment};
+    use gear_mesh_core::{DocComment, TypeAttributes};
 
     #[test]
     fn test_generate_simple_struct() {
@@ -374,6 +389,8 @@ mod tests {
 
         assert!(output.contains("type Brand<T, B>"));
         assert!(output.contains("export type UserId = Brand<number, \"UserId\">;"));
-        assert!(output.contains("export const UserId = (value: number): UserId => value as UserId;"));
+        assert!(
+            output.contains("export const UserId = (value: number): UserId => value as UserId;")
+        );
     }
 }

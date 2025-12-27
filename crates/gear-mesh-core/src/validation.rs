@@ -8,10 +8,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ValidationRule {
     /// 範囲チェック
-    Range {
-        min: Option<f64>,
-        max: Option<f64>,
-    },
+    Range { min: Option<f64>, max: Option<f64> },
     /// 文字列長さチェック
     Length {
         min: Option<usize>,
@@ -132,7 +129,10 @@ mod tests {
             min: Some(1.0),
             max: Some(100.0),
         };
-        assert_eq!(rule.to_typescript_check("age"), "obj.age >= 1 && obj.age <= 100");
+        assert_eq!(
+            rule.to_typescript_check("age"),
+            "obj.age >= 1 && obj.age <= 100"
+        );
     }
 
     #[test]

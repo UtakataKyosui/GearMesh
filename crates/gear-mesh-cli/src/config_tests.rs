@@ -38,7 +38,7 @@ fn test_config_to_generator_config() {
 fn test_config_serialization() {
     let config = Config::default();
     let toml_str = toml::to_string(&config).unwrap();
-    
+
     assert!(toml_str.contains("input"));
     assert!(toml_str.contains("output"));
     assert!(toml_str.contains("use_bigint"));

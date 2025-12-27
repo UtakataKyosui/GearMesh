@@ -5,9 +5,9 @@
 use syn::{Data, DeriveInput, Fields, Result, Type};
 
 use gear_mesh_core::{
-    DocComment, EnumRepresentation, EnumType, EnumVariant, FieldInfo, GearMeshType,
-    GenericParam, NewtypeType, PrimitiveType, SerdeFieldAttrs, StructType, TypeAttributes,
-    TypeKind, TypeRef, VariantContent,
+    DocComment, EnumRepresentation, EnumType, EnumVariant, FieldInfo, GearMeshType, GenericParam,
+    NewtypeType, PrimitiveType, SerdeFieldAttrs, StructType, TypeAttributes, TypeKind, TypeRef,
+    VariantContent,
 };
 
 use crate::attributes::{
@@ -30,7 +30,11 @@ pub fn parse_type(input: &DeriveInput) -> Result<GearMeshType> {
         .type_params()
         .map(|tp| GenericParam {
             name: tp.ident.to_string(),
-            bounds: tp.bounds.iter().map(|b| quote::quote!(#b).to_string()).collect(),
+            bounds: tp
+                .bounds
+                .iter()
+                .map(|b| quote::quote!(#b).to_string())
+                .collect(),
         })
         .collect();
 
@@ -97,7 +101,9 @@ fn parse_struct(fields: &Fields, attrs: &TypeAttributes) -> Result<TypeKind> {
                 })
                 .collect::<Result<Vec<_>>>()?;
 
-            Ok(TypeKind::Struct(StructType { fields: field_infos }))
+            Ok(TypeKind::Struct(StructType {
+                fields: field_infos,
+            }))
         }
         Fields::Unnamed(unnamed) => {
             // タプル構造体
@@ -106,7 +112,11 @@ fn parse_struct(fields: &Fields, attrs: &TypeAttributes) -> Result<TypeKind> {
                 let inner = parse_type_ref(&unnamed.unnamed[0].ty);
                 Ok(TypeKind::Newtype(NewtypeType { inner }))
             } else {
-                let types = unnamed.unnamed.iter().map(|f| parse_type_ref(&f.ty)).collect();
+                let types = unnamed
+                    .unnamed
+                    .iter()
+                    .map(|f| parse_type_ref(&f.ty))
+                    .collect();
                 Ok(TypeKind::Tuple(types))
             }
         }
@@ -122,7 +132,11 @@ fn parse_variant(variant: &syn::Variant) -> Result<EnumVariant> {
     let content = match &variant.fields {
         Fields::Unit => VariantContent::Unit,
         Fields::Unnamed(unnamed) => {
-            let types = unnamed.unnamed.iter().map(|f| parse_type_ref(&f.ty)).collect();
+            let types = unnamed
+                .unnamed
+                .iter()
+                .map(|f| parse_type_ref(&f.ty))
+                .collect();
             VariantContent::Tuple(types)
         }
         Fields::Named(named) => {

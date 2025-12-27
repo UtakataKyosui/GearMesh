@@ -2,15 +2,15 @@
 //!
 //! GearMeshType（中間表現）からTypeScriptコードを生成します。
 
-mod typescript;
 mod branded;
+mod typescript;
 mod validation_gen;
 
 #[cfg(test)]
 mod tests;
 
-pub use typescript::TypeScriptGenerator;
 pub use branded::BrandedTypeGenerator;
+pub use typescript::TypeScriptGenerator;
 pub use validation_gen::ValidationGenerator;
 
 /// 生成設定

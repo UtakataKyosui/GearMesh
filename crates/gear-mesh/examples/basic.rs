@@ -3,8 +3,8 @@
 //! Run with: cargo run --example basic
 
 use gear_mesh_core::{
-    DocComment, FieldInfo, GearMeshType, NewtypeType, SerdeFieldAttrs, StructType,
-    TypeAttributes, TypeKind, TypeRef,
+    DocComment, FieldInfo, GearMeshType, NewtypeType, SerdeFieldAttrs, StructType, TypeAttributes,
+    TypeKind, TypeRef,
 };
 use gear_mesh_generator::{GeneratorConfig, TypeScriptGenerator};
 

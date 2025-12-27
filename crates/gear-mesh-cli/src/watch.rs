@@ -42,11 +42,10 @@ pub fn run(input_dir: &Path, output_dir: &Path, config: &Config) -> Result<()> {
         match rx.recv() {
             Ok(event) => {
                 // Rustファイルの変更のみを処理
-                let is_rust_file = event.paths.iter().any(|p| {
-                    p.extension()
-                        .map(|ext| ext == "rs")
-                        .unwrap_or(false)
-                });
+                let is_rust_file = event
+                    .paths
+                    .iter()
+                    .any(|p| p.extension().map(|ext| ext == "rs").unwrap_or(false));
 
                 if is_rust_file {
                     println!("\nFile changed, regenerating...");

@@ -12,7 +12,11 @@ that spans multiple lines.
     let parsed = DocComment::parse(doc);
     assert_eq!(parsed.summary, "This is a summary.");
     assert!(parsed.description.is_some());
-    assert!(parsed.description.as_ref().unwrap().contains("detailed description"));
+    assert!(parsed
+        .description
+        .as_ref()
+        .unwrap()
+        .contains("detailed description"));
 }
 
 #[test]

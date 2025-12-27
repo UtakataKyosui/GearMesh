@@ -110,7 +110,8 @@ pub fn parse_serde_rename(attrs: &[Attribute]) -> Option<String> {
                         if let Some(quote_start) = after_eq.find('"') {
                             if let Some(quote_end) = after_eq[quote_start + 1..].find('"') {
                                 return Some(
-                                    after_eq[quote_start + 1..quote_start + 1 + quote_end].to_string(),
+                                    after_eq[quote_start + 1..quote_start + 1 + quote_end]
+                                        .to_string(),
                                 );
                             }
                         }

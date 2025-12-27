@@ -3,10 +3,10 @@
 //! このクレートは、RustとTypeScript間の型変換における
 //! 言語非依存の中間表現を提供します。
 
+mod docs;
 mod types;
 mod validation;
-mod docs;
 
+pub use docs::*;
 pub use types::*;
 pub use validation::*;
-pub use docs::*;

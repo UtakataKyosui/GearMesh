@@ -37,10 +37,7 @@ pub enum TypeKind {
     /// Option<T>
     Option(Box<TypeRef>),
     /// Result<T, E>
-    Result {
-        ok: Box<TypeRef>,
-        err: Box<TypeRef>,
-    },
+    Result { ok: Box<TypeRef>, err: Box<TypeRef> },
     /// HashMap<K, V>
     Map {
         key: Box<TypeRef>,
@@ -303,9 +300,7 @@ impl RenameRule {
             RenameRule::PascalCase => to_pascal_case(name),
             RenameRule::ScreamingSnakeCase => to_snake_case(name).to_uppercase(),
             RenameRule::KebabCase => to_snake_case(name).replace('_', "-"),
-            RenameRule::ScreamingKebabCase => {
-                to_snake_case(name).to_uppercase().replace('_', "-")
-            }
+            RenameRule::ScreamingKebabCase => to_snake_case(name).to_uppercase().replace('_', "-"),
         }
     }
 }
@@ -359,7 +354,10 @@ mod tests {
         assert_eq!(RenameRule::SnakeCase.apply("userName"), "user_name");
         assert_eq!(RenameRule::PascalCase.apply("user_name"), "UserName");
         assert_eq!(RenameRule::KebabCase.apply("userName"), "user-name");
-        assert_eq!(RenameRule::ScreamingSnakeCase.apply("userName"), "USER_NAME");
+        assert_eq!(
+            RenameRule::ScreamingSnakeCase.apply("userName"),
+            "USER_NAME"
+        );
         assert_eq!(RenameRule::Lowercase.apply("UserName"), "username");
         assert_eq!(RenameRule::Uppercase.apply("userName"), "USERNAME");
     }

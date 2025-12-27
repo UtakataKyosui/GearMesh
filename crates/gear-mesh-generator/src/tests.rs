@@ -1,8 +1,8 @@
 //! TypeScriptコード生成の追加テスト
 
 use gear_mesh_core::{
-    DocComment, EnumRepresentation, EnumType, EnumVariant, FieldInfo, GearMeshType,
-    NewtypeType, StructType, TypeAttributes, TypeKind, TypeRef, VariantContent,
+    DocComment, EnumRepresentation, EnumType, EnumVariant, FieldInfo, GearMeshType, NewtypeType,
+    StructType, TypeAttributes, TypeKind, TypeRef, VariantContent,
 };
 
 use crate::{GeneratorConfig, TypeScriptGenerator};
