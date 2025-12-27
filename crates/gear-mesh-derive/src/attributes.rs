@@ -49,18 +49,19 @@ pub fn parse_validate_attrs(attrs: &[Attribute]) -> Result<Vec<ValidationRule>> 
                     meta.parse_nested_meta(|inner| {
                         if inner.path.is_ident("min") {
                             let _ = inner.input.parse::<syn::Token![=]>()?;
-                            // 整数か浮動小数点数のいずれかをパース
-                            if let Ok(lit) = inner.input.parse::<syn::LitFloat>() {
-                                min = Some(lit.base10_parse::<f64>()?);
-                            } else if let Ok(lit) = inner.input.parse::<syn::LitInt>() {
-                                min = Some(lit.base10_parse::<i64>()? as f64);
+                            let lit: syn::Lit = inner.input.parse()?;
+                            match lit {
+                                syn::Lit::Int(i) => min = Some(i.base10_parse::<i64>()? as f64),
+                                syn::Lit::Float(f) => min = Some(f.base10_parse::<f64>()?),
+                                _ => {}
                             }
                         } else if inner.path.is_ident("max") {
                             let _ = inner.input.parse::<syn::Token![=]>()?;
-                            if let Ok(lit) = inner.input.parse::<syn::LitFloat>() {
-                                max = Some(lit.base10_parse::<f64>()?);
-                            } else if let Ok(lit) = inner.input.parse::<syn::LitInt>() {
-                                max = Some(lit.base10_parse::<i64>()? as f64);
+                            let lit: syn::Lit = inner.input.parse()?;
+                            match lit {
+                                syn::Lit::Int(i) => max = Some(i.base10_parse::<i64>()? as f64),
+                                syn::Lit::Float(f) => max = Some(f.base10_parse::<f64>()?),
+                                _ => {}
                             }
                         }
                         Ok(())

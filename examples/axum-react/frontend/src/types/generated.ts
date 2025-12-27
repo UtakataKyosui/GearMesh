@@ -82,13 +82,13 @@ export const CreateUserResponseSchema = z.object({
 export const CreateUserRequestSchema = z.object({
     name: z.string().min(1).max(20),
     email: z.string(),
-    age: z.number().nullable(),
+    age: z.number().min(1).max(100).nullable(),
 });
 
 export const UserSchema = z.object({
     id: z.unknown(),
     name: z.string().min(1).max(20),
     email: z.string(),
-    age: z.number().nullable(),
+    age: z.number().min(1).max(100).nullable(),
 });
 
