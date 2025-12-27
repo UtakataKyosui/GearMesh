@@ -107,6 +107,22 @@ pub fn generate_types_to_dir(output_dir: impl AsRef<std::path::Path>) -> std::io
             content.push_str("import { z } from 'zod';\n");
         }
 
+        // Extract type dependencies and generate imports
+        let deps = crate::extract_type_dependencies(ty);
+        let mut sorted_deps: Vec<_> = deps.iter().collect();
+        sorted_deps.sort();
+
+        for dep in sorted_deps {
+            // Skip self-reference
+            if dep != &ty.name {
+                content.push_str(&format!("import type {{ {} }} from './{}';\n", dep, dep));
+            }
+        }
+
+        if !deps.is_empty() {
+            content.push('\n');
+        }
+
         // Branded Type helper if this type needs it
         if config.generate_branded && ty.attributes.branded {
             content.push_str("\n// Branded Type helper\n");

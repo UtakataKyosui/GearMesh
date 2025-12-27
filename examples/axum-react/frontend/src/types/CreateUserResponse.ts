@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { User } from './User';
+
 
 /**
  * Response after creating a user

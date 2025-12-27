@@ -90,7 +90,9 @@ pub use inventory_collect::{generate_types, generate_types_to_dir, TypeInfo};
 
 // Output path registry for automatic generation
 mod output_registry;
+mod type_deps;
 pub use output_registry::register_output;
+pub use type_deps::extract_type_dependencies;
 
 // Export types macro for build-time type generation
 #[macro_use]

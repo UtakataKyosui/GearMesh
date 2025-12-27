@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import type { UserId } from './UserId';
+
 
 /**
  * User information
