@@ -6,7 +6,7 @@ Thank you for your interest in contributing to gear-mesh! This document provides
 
 ### Prerequisites
 
-- Rust 1.70 or later
+- Rust 1.90 or later
 - Node.js 18+ and npm (for TypeScript validation)
 - Docker (optional, for E2E tests)
 
@@ -27,10 +27,6 @@ cargo build --workspace
 ```bash
 cargo test --workspace
 ```
-
-## Project Structure
-
-See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for detailed information about the project layout.
 
 ## Development Workflow
 
@@ -79,30 +75,11 @@ cargo clippy --all-targets --all-features
 - Use `#[cfg(test)]` module
 - Test edge cases and error conditions
 
-Example:
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_feature() {
-        // Test implementation
-    }
-}
-```
-
 ### Integration Tests
 
-- Place integration tests in `crates/gear-mesh/tests/`
+- Place integration tests in `crates/gear-mesh-generator/src/tests.rs` or `tests/`
 - Test complete workflows
 - Use realistic scenarios
-
-### E2E Tests
-
-- Modify `tests/e2e/test-e2e-simple.sh` for new scenarios
-- Ensure Docker tests pass
-- Document any new test cases
 
 ## Code Style
 
@@ -112,22 +89,6 @@ mod tests {
 - Use `cargo fmt` for formatting
 - Address all `cargo clippy` warnings
 - Write doc comments for public APIs
-
-Example:
-```rust
-/// Generates TypeScript code from a GearMeshType.
-///
-/// # Arguments
-///
-/// * `types` - A slice of GearMeshType to generate code for
-///
-/// # Returns
-///
-/// A String containing the generated TypeScript code
-pub fn generate(&mut self, types: &[GearMeshType]) -> String {
-    // Implementation
-}
-```
 
 ### TypeScript (Generated Code)
 
@@ -158,13 +119,6 @@ If adding TypeScript generation features:
 2. Add configuration options if needed
 3. Add tests in `tests.rs`
 
-### 4. CLI (gear-mesh-cli)
-
-If adding CLI features:
-1. Update command definitions in `main.rs`
-2. Add configuration options in `config.rs`
-3. Update `gear-mesh.toml` schema
-
 ## Documentation
 
 ### Code Documentation
@@ -188,16 +142,6 @@ If adding CLI features:
 3. Run full test suite
 4. Create git tag
 5. Publish to crates.io
-
-## Getting Help
-
-- Open an issue for bugs or feature requests
-- Join discussions in GitHub Discussions
-- Check existing issues and PRs
-
-## Code of Conduct
-
-Be respectful and constructive in all interactions. We aim to maintain a welcoming and inclusive community.
 
 ## License
 
