@@ -5,6 +5,11 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 description = "Derive macros for gear-mesh"
+readme = "README.md"
+homepage = "https://github.com/UtakataKyosui/GearMesh"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lib]
 proc-macro = true

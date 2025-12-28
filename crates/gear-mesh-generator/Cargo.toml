@@ -4,7 +4,12 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "TypeScript code generator and main API for gear-mesh"
+description = "TypeScript code generator for gear-mesh"
+readme = "README.md"
+homepage = "https://github.com/UtakataKyosui/GearMesh"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 gear-mesh-core = { workspace = true }

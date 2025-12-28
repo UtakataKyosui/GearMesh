@@ -5,6 +5,11 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 description = "Core types and intermediate representation for gear-mesh"
+readme = "README.md"
+homepage = "https://github.com/UtakataKyosui/GearMesh"
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
 serde = { workspace = true }
