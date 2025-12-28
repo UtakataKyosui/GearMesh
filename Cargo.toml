@@ -9,7 +9,7 @@ members = [
 exclude = ["examples"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["UtakataKyosui"]
 license = "MIT OR Apache-2.0"
@@ -20,9 +20,9 @@ categories = ["development-tools", "web-programming"]
 
 [workspace.dependencies]
 # Core
-gear-mesh-core = { path = "crates/gear-mesh-core", version = "0.1.0" }
-gear-mesh-derive = { path = "crates/gear-mesh-derive", version = "0.1.0" }
-gear-mesh-generator = { path = "crates/gear-mesh-generator", version = "0.1.0" }
+gear-mesh-core = { path = "crates/gear-mesh-core", version = "0.1.1" }
+gear-mesh-derive = { path = "crates/gear-mesh-derive", version = "0.1.1" }
+gear-mesh-generator = { path = "crates/gear-mesh-generator", version = "0.1.1" }
 
 
 
