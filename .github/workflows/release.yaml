@@ -85,31 +85,80 @@ jobs:
         run: cargo test --workspace --all-features
       
       - name: Publish gear-mesh-core
+        continue-on-error: true
+        id: publish-core
         run: |
           cd crates/gear-mesh-core
-          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          if cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} 2>&1 | tee /tmp/publish-core.log | grep -q "already exists"; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+            echo "✓ gear-mesh-core@0.1.0 already published, skipping"
+          elif grep -q "Uploading" /tmp/publish-core.log; then
+            echo "already_published=false" >> $GITHUB_OUTPUT
+            echo "✓ gear-mesh-core@0.1.0 published successfully"
+          else
+            cat /tmp/publish-core.log
+            exit 1
+          fi
       
       - name: Wait for crates.io to index
+        if: steps.publish-core.outputs.already_published == 'false'
         run: sleep 120
       
       - name: Publish gear-mesh-derive
+        continue-on-error: true
+        id: publish-derive
         run: |
           cd crates/gear-mesh-derive
-          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          if cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} 2>&1 | tee /tmp/publish-derive.log | grep -q "already exists"; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+            echo "✓ gear-mesh-derive@0.1.0 already published, skipping"
+          elif grep -q "Uploading" /tmp/publish-derive.log; then
+            echo "already_published=false" >> $GITHUB_OUTPUT
+            echo "✓ gear-mesh-derive@0.1.0 published successfully"
+          else
+            cat /tmp/publish-derive.log
+            exit 1
+          fi
       
       - name: Wait for crates.io to index
+        if: steps.publish-derive.outputs.already_published == 'false'
         run: sleep 120
       
       - name: Publish gear-mesh-generator
+        continue-on-error: true
+        id: publish-generator
         run: |
           cd crates/gear-mesh-generator
-          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          if cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} 2>&1 | tee /tmp/publish-generator.log | grep -q "already exists"; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+            echo "✓ gear-mesh-generator@0.1.0 already published, skipping"
+          elif grep -q "Uploading" /tmp/publish-generator.log; then
+            echo "already_published=false" >> $GITHUB_OUTPUT
+            echo "✓ gear-mesh-generator@0.1.0 published successfully"
+          else
+            cat /tmp/publish-generator.log
+            exit 1
+          fi
       
       - name: Wait for crates.io to index
+        if: steps.publish-generator.outputs.already_published == 'false'
         run: sleep 120
       
       - name: Publish gear-mesh
+        continue-on-error: true
+        id: publish-main
         run: |
           cd crates/gear-mesh
-          cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          if cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }} 2>&1 | tee /tmp/publish-main.log | grep -q "already exists"; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+            echo "✓ gear-mesh@0.1.0 already published, skipping"
+          elif grep -q "Uploading" /tmp/publish-main.log; then
+            echo "already_published=false" >> $GITHUB_OUTPUT
+            echo "✓ gear-mesh@0.1.0 published successfully"
+          else
+            cat /tmp/publish-main.log
+            exit 1
+          fi
+
+
 
