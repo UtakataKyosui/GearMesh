@@ -128,8 +128,12 @@ impl TypeScriptGenerator {
         }
 
         let field_name = field.serde_attrs.rename.as_ref().unwrap_or(&field.name);
-        let optional = if field.optional { "?" } else { "" };
-        let ts_type = self.type_ref_to_typescript(&field.ty);
+        let optional = if self.is_optional_field(field) {
+            "?"
+        } else {
+            ""
+        };
+        let ts_type = self.field_type_to_typescript(field);
 
         self.output.push_str(&format!(
             "{}{}{}: {};\n",
@@ -277,6 +281,13 @@ impl TypeScriptGenerator {
                 }
             }
             "Result" => self.result_to_typescript(type_ref),
+            "Box" | "Arc" | "Rc" | "Cow" => {
+                if let Some(inner) = type_ref.generics.last() {
+                    self.type_ref_to_typescript(inner)
+                } else {
+                    "unknown".to_string()
+                }
+            }
             "HashMap" | "BTreeMap" => {
                 let key = type_ref
                     .generics
@@ -331,8 +342,32 @@ impl TypeScriptGenerator {
     fn wrap_option_type(&self, inner: String) -> String {
         match self.config.option_style {
             OptionStyle::Nullable => format!("{} | null", inner),
-            OptionStyle::Optional => format!("{} | undefined", inner),
-            OptionStyle::Both => format!("{} | null | undefined", inner),
+            OptionStyle::Optional => inner,
+            OptionStyle::Both => format!("{} | null", inner),
+        }
+    }
+
+    fn is_optional_field(&self, field: &FieldInfo) -> bool {
+        if field.ty.name != "Option" || !field.optional {
+            return field.optional;
+        }
+
+        match self.config.option_style {
+            OptionStyle::Nullable => false,
+            OptionStyle::Optional | OptionStyle::Both => true,
+        }
+    }
+
+    fn field_type_to_typescript(&self, field: &FieldInfo) -> String {
+        if field.ty.name != "Option" || field.ty.generics.is_empty() {
+            return self.type_ref_to_typescript(&field.ty);
+        }
+
+        let inner = self.type_ref_to_typescript(&field.ty.generics[0]);
+        match self.config.option_style {
+            OptionStyle::Nullable => format!("{} | null", inner),
+            OptionStyle::Optional => inner,
+            OptionStyle::Both => format!("{} | null", inner),
         }
     }
 

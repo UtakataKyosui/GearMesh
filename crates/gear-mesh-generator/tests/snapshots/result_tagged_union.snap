@@ -1,5 +1,5 @@
 export interface ApiResponse {
     result: { ok: string } | { err: ApiError };
-    retry_after?: number | null;
+    retry_after: number | null;
 }
 

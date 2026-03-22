@@ -222,4 +222,30 @@ mod tests {
         assert!(message.contains("unsupported #[validate(...)] rule"));
         assert!(message.contains("supported rules"));
     }
+
+    #[test]
+    fn test_invalid_range_option_reports_supported_options() {
+        let field: syn::Field = parse_quote! {
+            #[validate(range(step = 1))]
+            value: i32
+        };
+
+        let err = parse_validate_attrs(&field.attrs).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("unsupported `range(...)` option"));
+        assert!(message.contains("supported options are `min = ...` and `max = ...`"));
+    }
+
+    #[test]
+    fn test_invalid_length_option_reports_supported_options() {
+        let field: syn::Field = parse_quote! {
+            #[validate(length(exact = 5))]
+            value: String
+        };
+
+        let err = parse_validate_attrs(&field.attrs).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("unsupported `length(...)` option"));
+        assert!(message.contains("supported options are `min = ...` and `max = ...`"));
+    }
 }

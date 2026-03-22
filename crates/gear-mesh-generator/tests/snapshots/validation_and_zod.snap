@@ -9,7 +9,7 @@ export interface UserInput {
     /** Email address */
     email: string;
     /** Optional website */
-    website?: string | null;
+    website: string | null;
 }
 
 // Zod Schemas

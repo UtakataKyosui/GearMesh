@@ -164,7 +164,7 @@ fn test_option_type_generation() {
     let mut generator = TypeScriptGenerator::new(GeneratorConfig::new());
     let output = generator.generate(&[optional_type]);
 
-    assert!(output.contains("value?: string | null;"));
+    assert!(output.contains("value: string | null;"));
 }
 
 #[test]
@@ -190,7 +190,7 @@ fn test_option_type_generation_with_optional_style() {
         TypeScriptGenerator::new(GeneratorConfig::new().with_option_style(OptionStyle::Optional));
     let output = generator.generate(&[optional_type]);
 
-    assert!(output.contains("value?: string | undefined;"));
+    assert!(output.contains("value?: string;"));
 }
 
 #[test]
@@ -473,6 +473,155 @@ fn test_zod_option_generation_with_optional_style() {
 }
 
 #[test]
+fn test_zod_option_generation_with_nullable_style_keeps_key_required() {
+    let ty = GearMeshType {
+        name: "OptionalData".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "value".to_string(),
+                ty: TypeRef::with_generics("Option", vec![TypeRef::new("String")]),
+                docs: None,
+                validations: vec![],
+                optional: true,
+                serde_attrs: Default::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator = TypeScriptGenerator::new(
+        GeneratorConfig::new()
+            .with_zod(true)
+            .with_option_style(OptionStyle::Nullable),
+    );
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("value: z.string().nullable()"));
+}
+
+#[test]
+fn test_zod_generation_for_internal_types() {
+    let ty = GearMeshType {
+        name: "InternalTypes".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "array".to_string(),
+                    ty: TypeRef::with_generics("__array__", vec![TypeRef::new("String")]),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                },
+                FieldInfo {
+                    name: "tuple".to_string(),
+                    ty: TypeRef::with_generics(
+                        "__tuple__",
+                        vec![TypeRef::new("i32"), TypeRef::new("String")],
+                    ),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                },
+                FieldInfo {
+                    name: "unit".to_string(),
+                    ty: TypeRef::new("()"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new().with_zod(true));
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("array: z.array(z.string())"));
+    assert!(output.contains("tuple: z.tuple([z.number(), z.string()])"));
+    assert!(output.contains("unit: z.null()"));
+}
+
+#[test]
+fn test_pointer_wrapper_type_generation() {
+    let ty = GearMeshType {
+        name: "Wrapped".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "boxed".to_string(),
+                    ty: TypeRef::with_generics("Box", vec![TypeRef::new("String")]),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                },
+                FieldInfo {
+                    name: "shared".to_string(),
+                    ty: TypeRef::with_generics("Arc", vec![TypeRef::new("User")]),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new());
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("boxed: string;"));
+    assert!(output.contains("shared: User;"));
+}
+
+#[test]
+fn test_pointer_wrapper_zod_generation() {
+    let ty = GearMeshType {
+        name: "Wrapped".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "boxed".to_string(),
+                    ty: TypeRef::with_generics("Box", vec![TypeRef::new("String")]),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                },
+                FieldInfo {
+                    name: "shared".to_string(),
+                    ty: TypeRef::with_generics("Rc", vec![TypeRef::new("User")]),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new().with_zod(true));
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("boxed: z.string()"));
+    assert!(output.contains("shared: UserSchema"));
+}
+
+#[test]
 fn test_zod_result_generation_with_tagged_union_style() {
     let ty = GearMeshType {
         name: "ApiResponse".to_string(),
@@ -717,9 +866,31 @@ fn test_snapshot_result_tagged_union_output() {
 }
 
 fn assert_snapshot(name: &str, actual: &str) {
-    let expected = fs::read_to_string(snapshot_path(name))
-        .unwrap_or_else(|err| panic!("failed to read snapshot `{name}`: {err}"));
-    assert_eq!(normalize_snapshot(&expected), normalize_snapshot(actual));
+    let path = snapshot_path(name);
+    let actual_normalized = normalize_snapshot(actual);
+
+    if std::env::var("UPDATE_SNAPSHOTS").is_ok() {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)
+                .unwrap_or_else(|err| panic!("failed to create snapshot directory: {err}"));
+        }
+        fs::write(&path, &actual_normalized)
+            .unwrap_or_else(|err| panic!("failed to write snapshot `{}`: {err}", path.display()));
+        return;
+    }
+
+    let expected = fs::read_to_string(&path).unwrap_or_else(|_| {
+        panic!(
+            "Snapshot for '{}' does not exist. Run with `UPDATE_SNAPSHOTS=1` to create it.",
+            path.display()
+        )
+    });
+    assert_eq!(
+        normalize_snapshot(&expected),
+        actual_normalized,
+        "snapshot mismatch for '{}'",
+        name
+    );
 }
 
 fn snapshot_path(name: &str) -> PathBuf {
