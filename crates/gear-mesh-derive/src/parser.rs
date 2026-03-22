@@ -13,6 +13,7 @@ use gear_mesh_core::{
 use crate::attributes::{
     extract_doc_comments, parse_gear_mesh_attrs, parse_serde_rename, parse_validate_attrs,
 };
+use crate::error::{branded_requires_newtype, unsupported_generic_argument, unsupported_type};
 
 /// DeriveInputからGearMeshTypeを生成
 pub fn parse_type(input: &DeriveInput) -> Result<GearMeshType> {
@@ -72,12 +73,16 @@ pub fn parse_type(input: &DeriveInput) -> Result<GearMeshType> {
 fn parse_struct(fields: &Fields, attrs: &TypeAttributes) -> Result<TypeKind> {
     match fields {
         Fields::Named(named) => {
+            if attrs.branded {
+                return Err(branded_requires_newtype(named));
+            }
+
             let field_infos = named
                 .named
                 .iter()
                 .map(|f| {
                     let name = f.ident.as_ref().unwrap().to_string();
-                    let ty = parse_type_ref(&f.ty);
+                    let ty = parse_type_ref(&f.ty)?;
                     let docs = extract_doc_comments(&f.attrs);
                     let validations = parse_validate_attrs(&f.attrs)?;
                     let rename = parse_serde_rename(&f.attrs);
@@ -109,18 +114,27 @@ fn parse_struct(fields: &Fields, attrs: &TypeAttributes) -> Result<TypeKind> {
             // タプル構造体
             if unnamed.unnamed.len() == 1 && attrs.branded {
                 // newtypeパターン（Branded Type）
-                let inner = parse_type_ref(&unnamed.unnamed[0].ty);
+                let inner = parse_type_ref(&unnamed.unnamed[0].ty)?;
                 Ok(TypeKind::Newtype(NewtypeType { inner }))
             } else {
+                if attrs.branded {
+                    return Err(branded_requires_newtype(unnamed));
+                }
+
                 let types = unnamed
                     .unnamed
                     .iter()
                     .map(|f| parse_type_ref(&f.ty))
-                    .collect();
+                    .collect::<Result<Vec<_>>>()?;
                 Ok(TypeKind::Tuple(types))
             }
         }
-        Fields::Unit => Ok(TypeKind::Primitive(PrimitiveType::Unit)),
+        Fields::Unit => {
+            if attrs.branded {
+                return Err(branded_requires_newtype(fields));
+            }
+            Ok(TypeKind::Primitive(PrimitiveType::Unit))
+        }
     }
 }
 
@@ -136,20 +150,20 @@ fn parse_variant(variant: &syn::Variant) -> Result<EnumVariant> {
                 .unnamed
                 .iter()
                 .map(|f| parse_type_ref(&f.ty))
-                .collect();
+                .collect::<Result<Vec<_>>>()?;
             VariantContent::Tuple(types)
         }
         Fields::Named(named) => {
             let fields = named
                 .named
                 .iter()
-                .map(|f| {
+                .map(|f| -> Result<FieldInfo> {
                     let field_name = f.ident.as_ref().unwrap().to_string();
-                    let ty = parse_type_ref(&f.ty);
+                    let ty = parse_type_ref(&f.ty)?;
                     let field_docs = extract_doc_comments(&f.attrs);
-                    let validations = parse_validate_attrs(&f.attrs).unwrap_or_default();
+                    let validations = parse_validate_attrs(&f.attrs)?;
 
-                    FieldInfo {
+                    Ok(FieldInfo {
                         name: field_name,
                         ty,
                         docs: if field_docs.is_empty() {
@@ -160,9 +174,9 @@ fn parse_variant(variant: &syn::Variant) -> Result<EnumVariant> {
                         validations,
                         optional: is_option_type(&f.ty),
                         serde_attrs: Default::default(),
-                    }
+                    })
                 })
-                .collect();
+                .collect::<Result<Vec<_>>>()?;
             VariantContent::Struct(fields)
         }
     };
@@ -179,13 +193,13 @@ fn parse_variant(variant: &syn::Variant) -> Result<EnumVariant> {
 }
 
 /// syn::TypeからTypeRefへ変換
-fn parse_type_ref(ty: &Type) -> TypeRef {
+fn parse_type_ref(ty: &Type) -> Result<TypeRef> {
     match ty {
         Type::Path(path) => {
             let segments: Vec<_> = path.path.segments.iter().collect();
 
             if segments.is_empty() {
-                return TypeRef::new("unknown");
+                return Err(unsupported_type(ty));
             }
 
             let last = segments.last().unwrap();
@@ -196,37 +210,41 @@ fn parse_type_ref(ty: &Type) -> TypeRef {
                 syn::PathArguments::AngleBracketed(args) => args
                     .args
                     .iter()
-                    .filter_map(|arg| {
+                    .map(|arg| {
                         if let syn::GenericArgument::Type(ty) = arg {
-                            Some(parse_type_ref(ty))
+                            parse_type_ref(ty)
                         } else {
-                            None
+                            Err(unsupported_generic_argument(arg))
                         }
                     })
-                    .collect(),
+                    .collect::<Result<Vec<_>>>()?,
                 _ => Vec::new(),
             };
 
-            TypeRef::with_generics(name, generics)
+            Ok(TypeRef::with_generics(name, generics))
         }
         Type::Reference(reference) => parse_type_ref(&reference.elem),
         Type::Tuple(tuple) => {
             if tuple.elems.is_empty() {
-                TypeRef::new("()")
+                Ok(TypeRef::new("()"))
             } else {
-                let generics = tuple.elems.iter().map(parse_type_ref).collect();
-                TypeRef::with_generics("__tuple__", generics)
+                let generics = tuple
+                    .elems
+                    .iter()
+                    .map(parse_type_ref)
+                    .collect::<Result<Vec<_>>>()?;
+                Ok(TypeRef::with_generics("__tuple__", generics))
             }
         }
         Type::Array(array) => {
-            let elem = parse_type_ref(&array.elem);
-            TypeRef::with_generics("__array__", vec![elem])
+            let elem = parse_type_ref(&array.elem)?;
+            Ok(TypeRef::with_generics("__array__", vec![elem]))
         }
         Type::Slice(slice) => {
-            let elem = parse_type_ref(&slice.elem);
-            TypeRef::with_generics("__slice__", vec![elem])
+            let elem = parse_type_ref(&slice.elem)?;
+            Ok(TypeRef::with_generics("__slice__", vec![elem]))
         }
-        _ => TypeRef::new("unknown"),
+        _ => Err(unsupported_type(ty)),
     }
 }
 
@@ -238,4 +256,55 @@ fn is_option_type(ty: &Type) -> bool {
         return segment.ident == "Option";
     }
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use syn::parse_quote;
+
+    #[test]
+    fn test_unsupported_field_type_reports_actionable_error() {
+        let input: DeriveInput = parse_quote! {
+            struct CallbackHolder {
+                callback: fn(i32) -> i32,
+            }
+        };
+
+        let err = parse_type(&input).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("unsupported type for #[derive(GearMesh)]"));
+        assert!(message.contains("supported generic such as Option<T> or Vec<T>"));
+    }
+
+    #[test]
+    fn test_branded_requires_single_field_tuple_struct() {
+        let input: DeriveInput = parse_quote! {
+            #[gear_mesh(branded)]
+            struct UserId {
+                value: i32,
+            }
+        };
+
+        let err = parse_type(&input).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("single-field tuple structs"));
+        assert!(message.contains("struct UserId(i32);"));
+    }
+
+    #[test]
+    fn test_variant_validation_errors_are_not_swallowed() {
+        let input: DeriveInput = parse_quote! {
+            enum ApiResponse {
+                Invalid {
+                    #[validate(range(min = "oops"))]
+                    code: i32,
+                }
+            }
+        };
+
+        let err = parse_type(&input).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("invalid `range(min = ...)` value"));
+    }
 }

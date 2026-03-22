@@ -7,6 +7,7 @@ use quote::quote;
 use syn::{DeriveInput, parse_macro_input};
 
 mod attributes;
+mod error;
 mod parser;
 
 use parser::parse_type;
@@ -43,7 +44,8 @@ pub fn derive_gear_mesh(input: TokenStream) -> TokenStream {
     match parse_type(&input) {
         Ok(gear_mesh_type) => {
             let name = &input.ident;
-            let type_json = serde_json::to_string(&gear_mesh_type).unwrap_or_default();
+            let type_json = serde_json::to_string(&gear_mesh_type)
+                .expect("failed to serialize GearMeshType for derive output");
 
             let expanded = quote! {
                 impl ::gear_mesh::GearMeshExport for #name {

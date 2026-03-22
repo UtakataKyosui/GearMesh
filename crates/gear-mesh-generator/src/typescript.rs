@@ -2,10 +2,10 @@
 
 use gear_mesh_core::{
     EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, StructType, TypeKind,
-    TypeRef, VariantContent,
+    TypeRef, VariantContent, to_typescript_primitive,
 };
 
-use crate::GeneratorConfig;
+use crate::{GeneratorConfig, OptionStyle, ResultStyle};
 
 /// TypeScript生成器
 pub struct TypeScriptGenerator {
@@ -255,21 +255,13 @@ impl TypeScriptGenerator {
 
     /// TypeRefからTypeScript型文字列へ変換
     fn type_ref_to_typescript(&self, type_ref: &TypeRef) -> String {
-        match type_ref.name.as_str() {
-            // プリミティブ型
-            "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32" | "f64" => "number".to_string(),
-            "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => {
-                if self.config.use_bigint {
-                    "bigint".to_string()
-                } else {
-                    "number".to_string()
-                }
-            }
-            "bool" => "boolean".to_string(),
-            "char" | "String" | "str" => "string".to_string(),
-            "()" => "null".to_string(),
+        if let Some(primitive) =
+            to_typescript_primitive(type_ref.name.as_str(), self.config.use_bigint)
+        {
+            return primitive.to_string();
+        }
 
-            // コレクション
+        match type_ref.name.as_str() {
             "Vec" | "__array__" | "__slice__" => {
                 if let Some(inner) = type_ref.generics.first() {
                     format!("{}[]", self.type_ref_to_typescript(inner))
@@ -279,19 +271,12 @@ impl TypeScriptGenerator {
             }
             "Option" => {
                 if let Some(inner) = type_ref.generics.first() {
-                    format!("{} | null", self.type_ref_to_typescript(inner))
+                    self.wrap_option_type(self.type_ref_to_typescript(inner))
                 } else {
-                    "unknown | null".to_string()
+                    self.wrap_option_type("unknown".to_string())
                 }
             }
-            "Result" => {
-                // Resultは通常Either的な型になるが、シンプルにokの型を返す
-                if let Some(ok) = type_ref.generics.first() {
-                    self.type_ref_to_typescript(ok)
-                } else {
-                    "unknown".to_string()
-                }
-            }
+            "Result" => self.result_to_typescript(type_ref),
             "HashMap" | "BTreeMap" => {
                 let key = type_ref
                     .generics
@@ -340,6 +325,36 @@ impl TypeScriptGenerator {
                     format!("{}<{}>", type_ref.name, generics.join(", "))
                 }
             }
+        }
+    }
+
+    fn wrap_option_type(&self, inner: String) -> String {
+        match self.config.option_style {
+            OptionStyle::Nullable => format!("{} | null", inner),
+            OptionStyle::Optional => format!("{} | undefined", inner),
+            OptionStyle::Both => format!("{} | null | undefined", inner),
+        }
+    }
+
+    fn result_to_typescript(&self, type_ref: &TypeRef) -> String {
+        let ok = type_ref
+            .generics
+            .first()
+            .map(|ty| self.type_ref_to_typescript(ty))
+            .unwrap_or_else(|| "unknown".to_string());
+        let err = type_ref
+            .generics
+            .get(1)
+            .map(|ty| self.type_ref_to_typescript(ty))
+            .unwrap_or_else(|| "unknown".to_string());
+
+        match self.config.result_style {
+            ResultStyle::OkOnly => ok,
+            ResultStyle::TaggedUnion => format!("{{ ok: {} }} | {{ err: {} }}", ok, err),
+            ResultStyle::SuccessError => format!(
+                "{{ success: true; data: {} }} | {{ success: false; error: {} }}",
+                ok, err
+            ),
         }
     }
 }

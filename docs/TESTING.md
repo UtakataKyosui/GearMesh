@@ -9,9 +9,9 @@ GearMesh has comprehensive test coverage across all crates.
 | Crate | Unit Tests | Integration Tests |
 |-------|-----------|-------------------|
 | **gear-mesh-core** | ~17 | - |
-| **gear-mesh-derive** | 0 | - |
-| **gear-mesh-generator** | ~39 | 28 |
-| **Total** | **~56** | **28** |
+| **gear-mesh-derive** | ~6 | - |
+| **gear-mesh-generator** | ~45 | 28 |
+| **Total** | **~71** | **28** |
 
 ## Running Tests
 
@@ -89,6 +89,18 @@ Located in `crates/gear-mesh-generator/src/tests.rs` and `crates/gear-mesh-gener
 - `rename_all`
 - `rename` field attribute
 
+### Snapshot Tests
+
+Located in `crates/gear-mesh-generator/src/tests.rs` with fixtures under
+`crates/gear-mesh-generator/tests/snapshots/`
+
+- Simple structs with JSDoc
+- Enums with data
+- Branded types
+- Generic types
+- Validation + Zod output
+- Configured `Result<T, E>` output
+
 ---
 
 ## Unit Tests by Crate
@@ -113,6 +125,7 @@ Located in `crates/gear-mesh-generator/src/tests.rs` and `crates/gear-mesh-gener
 #### typescript.rs
 - Struct generation
 - Branded type generation
+- Snapshot-backed regression coverage
 
 ---
 
@@ -148,13 +161,13 @@ Located in `tests/integration_test.rs`
 
 ### Untested Areas
 
-- ❌ `gear-mesh-derive` proc-macro (manual testing only)
-- ⚠️ Error handling (edge cases)
+- ⚠️ `gear-mesh-derive` compile-fail behavior through real macro expansion
+- ⚠️ Large output / performance benchmarks
 
 ---
 
 ## Next Steps
 
-1. **proc-macro tests**: Use `trybuild` for compile tests
+1. **compile-fail tests**: Add end-to-end proc-macro failure coverage
 2. **E2E tests**: Real Rust project type generation
 3. **Performance tests**: Large type definition benchmarks
