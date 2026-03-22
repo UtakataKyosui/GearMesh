@@ -109,7 +109,7 @@ pub struct User {
     pub name: String,
     /// User's email address
     pub email: String,
-    /// User's age (optional)
+    /// User's age (nullable)
     pub age: Option<i32>,
 }
 ```
@@ -135,8 +135,8 @@ export interface User {
     name: string;
     /** User's email address */
     email: string;
-    /** User's age (optional) */
-    age?: number | null;
+    /** User's age (nullable) */
+    age: number | null;
 }
 ```
 

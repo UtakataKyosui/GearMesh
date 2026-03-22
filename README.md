@@ -89,7 +89,9 @@ fn main() {
         .with_bigint(true)
         .with_branded(true)
         .with_zod(true) // Generate Zod schemas
-        .with_validation(true); // Generate validation functions
+        .with_validation(true)
+        .with_option_style(gear_mesh::OptionStyle::Nullable)
+        .with_result_style(gear_mesh::ResultStyle::TaggedUnion);
 
     gear_mesh::generate_with_config("generated", config)
         .expect("Failed to generate");
@@ -129,7 +131,7 @@ struct User {
     #[validate(range(min = 1, max = 150))]
     pub age: i32,
     
-    /// User's website (optional)
+    /// User's website (nullable)
     #[validate(url)]
     pub website: Option<String>,
 }
@@ -147,8 +149,8 @@ export interface User {
     email: string;
     /** User's age (1-150) */
     age: number;
-    /** User's website (optional) */
-    website?: string | null;
+    /** User's website (nullable) */
+    website: string | null;
 }
 
 export const UserSchema = z.object({

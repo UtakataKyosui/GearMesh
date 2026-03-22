@@ -18,8 +18,8 @@ export interface ActivityLog {
     score: bigint;
     /** タグリスト (配列のテスト) */
     tags: string[];
-    /** メモ (オプショナルのテスト) */
-    memo?: string | null;
+    /** メモ (nullable のテスト) */
+    memo: string | null;
 }
 
 // Zod Schema

@@ -56,7 +56,7 @@ Located in `crates/gear-mesh-generator/src/tests.rs` and `crates/gear-mesh-gener
 - Multiple Branded Types
 
 #### Collections
-- `Option<T>` → `T | null` + `?`
+- `Option<T>` → configurable by `OptionStyle`
 - `Vec<T>` → `T[]`
 - `HashMap<String, T>` → `Record<string, T>`
 
@@ -137,7 +137,7 @@ Located in `tests/integration_test.rs`
 - Complete flow for Branded Type
 - Complete flow for enums
 - Complete flow with BigInt
-- Complete flow with optional fields
+- Complete flow with configurable Option fields
 - Complete flow with validation
 
 ---

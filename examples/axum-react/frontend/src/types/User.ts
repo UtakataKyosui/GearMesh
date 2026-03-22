@@ -13,8 +13,8 @@ export interface User {
     name: string;
     /** User's email address */
     email: string;
-    /** User's age (optional) */
-    age?: number | null;
+    /** User's age (nullable) */
+    age: number | null;
 }
 
 // Zod Schema

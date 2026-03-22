@@ -39,7 +39,7 @@
 //! export interface User {
 //!     id: UserId;
 //!     name: string;
-//!     email?: string | null;
+//!     email: string | null;
 //! }
 //! ```
 //!

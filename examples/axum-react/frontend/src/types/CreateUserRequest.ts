@@ -8,8 +8,8 @@ export interface CreateUserRequest {
     name: string;
     /** Email address */
     email: string;
-    /** Age (optional) */
-    age?: number | null;
+    /** Age (nullable) */
+    age: number | null;
 }
 
 // Zod Schema

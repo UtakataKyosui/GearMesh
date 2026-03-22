@@ -18,7 +18,7 @@ pub struct ActivityLog {
     pub score: u64,
     /// タグリスト (配列のテスト)
     pub tags: Vec<String>,
-    /// メモ (オプショナルのテスト)
+    /// メモ (nullable のテスト)
     pub memo: Option<String>,
 }
 
