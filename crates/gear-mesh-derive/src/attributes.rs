@@ -4,7 +4,7 @@
 
 use syn::{Attribute, Expr, Lit, Meta, Result};
 
-use gear_mesh_core::{RenameRule, SerdeTypeAttrs, TypeAttributes, ValidationRule};
+use gear_mesh_core::{CrossFieldRule, RenameRule, SerdeTypeAttrs, TypeAttributes, ValidationRule};
 
 /// gear_mesh属性を解析
 pub fn parse_gear_mesh_attrs(attrs: &[Attribute]) -> Result<TypeAttributes> {
@@ -47,11 +47,15 @@ pub fn parse_gear_mesh_attrs(attrs: &[Attribute]) -> Result<TypeAttributes> {
 }
 
 /// validate属性を解析
-pub fn parse_validate_attrs(attrs: &[Attribute]) -> Result<Vec<ValidationRule>> {
+pub fn parse_validate_attrs(
+    attrs: &[Attribute],
+    field_name: Option<&str>,
+) -> Result<Vec<ValidationRule>> {
     let mut rules = Vec::new();
 
     for attr in attrs {
         if attr.path().is_ident("validate") {
+            let mut last_message_target = None;
             attr.parse_nested_meta(|meta| {
                 if meta.path.is_ident("range") {
                     let mut min = None;
@@ -91,6 +95,7 @@ pub fn parse_validate_attrs(attrs: &[Attribute]) -> Result<Vec<ValidationRule>> 
                         Ok(())
                     })?;
                     rules.push(ValidationRule::Range { min, max });
+                    last_message_target = None;
                 } else if meta.path.is_ident("length") {
                     let mut min = None;
                     let mut max = None;
@@ -111,17 +116,147 @@ pub fn parse_validate_attrs(attrs: &[Attribute]) -> Result<Vec<ValidationRule>> 
                         Ok(())
                     })?;
                     rules.push(ValidationRule::Length { min, max });
+                    last_message_target = None;
                 } else if meta.path.is_ident("email") {
                     rules.push(ValidationRule::Email);
+                    last_message_target = None;
                 } else if meta.path.is_ident("url") {
                     rules.push(ValidationRule::Url);
+                    last_message_target = None;
                 } else if meta.path.is_ident("pattern") {
                     let _ = meta.input.parse::<syn::Token![=]>()?;
                     let lit: syn::LitStr = meta.input.parse()?;
                     rules.push(ValidationRule::Pattern(lit.value()));
+                    last_message_target = None;
+                } else if meta.path.is_ident("custom") {
+                    let _ = meta.input.parse::<syn::Token![=]>()?;
+                    let lit: syn::LitStr = meta.input.parse()?;
+                    rules.push(ValidationRule::Custom {
+                        name: lit.value(),
+                        message: None,
+                    });
+                    last_message_target = Some(rules.len() - 1);
+                } else if meta.path.is_ident("message") {
+                    let _ = meta.input.parse::<syn::Token![=]>()?;
+                    let lit: syn::LitStr = meta.input.parse()?;
+                    if let Some(index) = last_message_target
+                        && let Some(ValidationRule::Custom { message, .. }) =
+                            rules.get_mut(index)
+                    {
+                        *message = Some(lit.value());
+                    }
+                } else if meta.path.is_ident("cross_field") {
+                    let mut fields = field_name
+                        .into_iter()
+                        .map(ToOwned::to_owned)
+                        .collect::<Vec<_>>();
+                    let mut rule = None;
+                    let mut message = None;
+
+                    meta.parse_nested_meta(|inner| {
+                        if inner.path.is_ident("match") {
+                            let _ = inner.input.parse::<syn::Token![=]>()?;
+                            let lit: syn::LitStr = inner.input.parse()?;
+                            let other = lit.value().trim().to_string();
+                            if other.is_empty() {
+                                return Err(inner.error(
+                                    "`cross_field(match = ...)` requires a non-empty field name",
+                                ));
+                            }
+                            fields.push(other);
+                            rule = Some(CrossFieldRule::Match);
+                        } else if inner.path.is_ident("at_least_one") {
+                            fields.extend(parse_csv_field_list(&inner)?);
+                            rule = Some(CrossFieldRule::AtLeastOne);
+                        } else if inner.path.is_ident("mutually_exclusive") {
+                            fields.extend(parse_csv_field_list(&inner)?);
+                            rule = Some(CrossFieldRule::MutuallyExclusive);
+                        } else if inner.path.is_ident("message") {
+                            let _ = inner.input.parse::<syn::Token![=]>()?;
+                            let lit: syn::LitStr = inner.input.parse()?;
+                            message = Some(lit.value());
+                        } else {
+                            return Err(inner.error(
+                                "unsupported `cross_field(...)` option\nhelp: supported options are `match = \"field\"`, `at_least_one = \"field1,field2\"`, `mutually_exclusive = \"field1,field2\"`, and `message = \"...\"`",
+                            ));
+                        }
+                        Ok(())
+                    })?;
+
+                    let Some(rule) = rule else {
+                        return Err(meta.error(
+                            "missing `cross_field(...)` rule\nhelp: use `match = \"field\"`, `at_least_one = \"field1,field2\"`, or `mutually_exclusive = \"field1,field2\"`",
+                        ));
+                    };
+                    if matches!(rule, CrossFieldRule::Match) && fields.len() < 2 {
+                        return Err(meta.error(
+                            "`cross_field(match = ...)` requires at least two fields",
+                        ));
+                    }
+
+                    rules.push(ValidationRule::CrossField {
+                        fields,
+                        rule,
+                        message,
+                        path: field_name.map(ToOwned::to_owned),
+                    });
+                    last_message_target = None;
+                } else if meta.path.is_ident("conditional") {
+                    let mut condition = None;
+                    let mut nested_rule = None;
+                    let mut message = None;
+
+                    meta.parse_nested_meta(|inner| {
+                        if inner.path.is_ident("condition") {
+                            let _ = inner.input.parse::<syn::Token![=]>()?;
+                            let lit: syn::LitStr = inner.input.parse()?;
+                            condition = Some(lit.value());
+                        } else if inner.path.is_ident("custom") {
+                            let _ = inner.input.parse::<syn::Token![=]>()?;
+                            let lit: syn::LitStr = inner.input.parse()?;
+                            nested_rule = Some(ValidationRule::Custom {
+                                name: lit.value(),
+                                message: None,
+                            });
+                        } else if inner.path.is_ident("message") {
+                            let _ = inner.input.parse::<syn::Token![=]>()?;
+                            let lit: syn::LitStr = inner.input.parse()?;
+                            message = Some(lit.value());
+                        } else {
+                            return Err(inner.error(
+                                "unsupported `conditional(...)` option\nhelp: supported options are `condition = \"...\"`, `custom = \"validator\"`, and `message = \"...\"`",
+                            ));
+                        }
+                        Ok(())
+                    })?;
+
+                    let Some(condition) = condition else {
+                        return Err(meta.error(
+                            "missing `conditional(condition = ...)` expression",
+                        ));
+                    };
+                    let Some(mut nested_rule) = nested_rule else {
+                        return Err(meta.error(
+                            "missing nested conditional rule\nhelp: use `conditional(condition = \"...\", custom = \"validator\")`",
+                        ));
+                    };
+
+                    if let ValidationRule::Custom {
+                        message: nested_message,
+                        ..
+                    } = &mut nested_rule
+                    {
+                        *nested_message = message;
+                    }
+
+                    rules.push(ValidationRule::Conditional {
+                        condition,
+                        rule: Box::new(nested_rule),
+                    });
+                    last_message_target = None;
                 } else {
                     return Err(meta.error(
-                        "unsupported #[validate(...)] rule\nhelp: supported rules are `range`, `length`, `email`, `url`, and `pattern = \"...\"`",
+                        "unsupported #[validate(...)] rule\nhelp: supported rules are `range`, `length`, `email`, `url`, `pattern = \"...\"`, `custom = \"validator\"`, `cross_field(...)`, and `conditional(...)`",
                     ));
                 }
                 Ok(())
@@ -186,6 +321,18 @@ fn parse_string_value(meta: &syn::meta::ParseNestedMeta<'_>) -> Result<String> {
     Ok(value.value())
 }
 
+fn parse_csv_field_list(meta: &syn::meta::ParseNestedMeta<'_>) -> Result<Vec<String>> {
+    let _ = meta.input.parse::<syn::Token![=]>()?;
+    let lit: syn::LitStr = meta.input.parse()?;
+    Ok(lit
+        .value()
+        .split(',')
+        .map(str::trim)
+        .filter(|field| !field.is_empty())
+        .map(ToOwned::to_owned)
+        .collect())
+}
+
 /// docコメントを抽出
 pub fn extract_doc_comments(attrs: &[Attribute]) -> String {
     attrs
@@ -244,11 +391,11 @@ mod tests {
     #[test]
     fn test_invalid_validate_rule_reports_supported_rules() {
         let field: syn::Field = parse_quote! {
-            #[validate(custom = "nope")]
+            #[validate(unknown)]
             value: String
         };
 
-        let err = parse_validate_attrs(&field.attrs).unwrap_err();
+        let err = parse_validate_attrs(&field.attrs, Some("value")).unwrap_err();
         let message = err.to_string();
         assert!(message.contains("unsupported #[validate(...)] rule"));
         assert!(message.contains("supported rules"));
@@ -291,7 +438,7 @@ mod tests {
             value: i32
         };
 
-        let err = parse_validate_attrs(&field.attrs).unwrap_err();
+        let err = parse_validate_attrs(&field.attrs, Some("value")).unwrap_err();
         let message = err.to_string();
         assert!(message.contains("unsupported `range(...)` option"));
         assert!(message.contains("supported options are `min = ...` and `max = ...`"));
@@ -304,9 +451,47 @@ mod tests {
             value: String
         };
 
-        let err = parse_validate_attrs(&field.attrs).unwrap_err();
+        let err = parse_validate_attrs(&field.attrs, Some("value")).unwrap_err();
         let message = err.to_string();
         assert!(message.contains("unsupported `length(...)` option"));
         assert!(message.contains("supported options are `min = ...` and `max = ...`"));
+    }
+
+    #[test]
+    fn test_parse_custom_message_and_cross_field_rules() {
+        let field: syn::Field = parse_quote! {
+            #[validate(custom = "validateUsername", message = "Username taken", cross_field(match = "password", message = "Passwords must match"))]
+            password_confirmation: String
+        };
+
+        let rules = parse_validate_attrs(&field.attrs, Some("password_confirmation")).unwrap();
+        assert!(matches!(
+            &rules[0],
+            ValidationRule::Custom {
+                name,
+                message: Some(message),
+            } if name == "validateUsername" && message == "Username taken"
+        ));
+        assert!(matches!(
+            &rules[1],
+            ValidationRule::CrossField {
+                fields,
+                rule: CrossFieldRule::Match,
+                message: Some(message),
+                ..
+            } if fields == &vec!["password_confirmation".to_string(), "password".to_string()]
+                && message == "Passwords must match"
+        ));
+    }
+
+    #[test]
+    fn test_cross_field_match_requires_other_field() {
+        let field: syn::Field = parse_quote! {
+            #[validate(cross_field(match = ""))]
+            password_confirmation: String
+        };
+
+        let err = parse_validate_attrs(&field.attrs, Some("password_confirmation")).unwrap_err();
+        assert!(err.to_string().contains("requires a non-empty field name"));
     }
 }

@@ -20,38 +20,12 @@ inventory::collect!(TypeInfo);
 ///     .expect("Failed to generate types");
 /// ```
 pub fn generate_types(output_path: impl AsRef<std::path::Path>) -> std::io::Result<()> {
-    use crate::{GeneratorConfig, TypeScriptGenerator};
-    use std::fs;
-
-    // Collect all registered types
-    let types: Vec<_> = inventory::iter::<TypeInfo>()
-        .map(|info| (info.get_type)())
-        .collect();
-
-    if types.is_empty() {
-        eprintln!(
-            "⚠️  Warning: No types found. Make sure you have #[derive(GearMesh)] on your types."
-        );
-    }
-
-    // Generate TypeScript with Zod schemas
-    let config = GeneratorConfig::new().with_zod(true).with_validation(true);
-    let mut generator = TypeScriptGenerator::new(config);
-    let output_content = generator.generate(&types);
-
-    // Create output directory
-    let output_path = output_path.as_ref();
-    if let Some(parent) = output_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
-    // Write to file
-    fs::write(output_path, output_content)?;
-
-    println!("✅ Generated TypeScript types: {}", output_path.display());
-    println!("   {} types exported", types.len());
-
-    Ok(())
+    generate_with_config(
+        output_path,
+        crate::GeneratorConfig::new()
+            .with_zod(true)
+            .with_validation(true),
+    )
 }
 
 /// Generate TypeScript definitions to separate files
@@ -67,16 +41,50 @@ pub fn generate_types(output_path: impl AsRef<std::path::Path>) -> std::io::Resu
 ///     .expect("Failed to generate types");
 /// ```
 pub fn generate_types_to_dir(output_dir: impl AsRef<std::path::Path>) -> std::io::Result<()> {
-    use crate::{GeneratorConfig, TypeScriptGenerator};
+    generate_types_to_dir_with_config(
+        output_dir,
+        crate::GeneratorConfig::new()
+            .with_zod(true)
+            .with_validation(true)
+            .with_module_strategy(crate::ModuleStrategy::PerType),
+    )
+}
+
+pub fn generate_with_config(
+    output_path: impl AsRef<std::path::Path>,
+    config: crate::GeneratorConfig,
+) -> std::io::Result<()> {
+    use std::fs;
+
+    let types = collect_registered_types();
+    if types.is_empty() {
+        eprintln!(
+            "⚠️  Warning: No types found. Make sure you have #[derive(GearMesh)] on your types."
+        );
+    }
+
+    let mut generator = crate::TypeScriptGenerator::new(config);
+    let output_content = generator.generate(&types);
+
+    let output_path = output_path.as_ref();
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(output_path, output_content)?;
+
+    println!("✅ Generated TypeScript types: {}", output_path.display());
+    println!("   {} types exported", types.len());
+    Ok(())
+}
+
+pub fn generate_types_to_dir_with_config(
+    output_dir: impl AsRef<std::path::Path>,
+    config: crate::GeneratorConfig,
+) -> std::io::Result<()> {
     use std::fs;
 
     let output_dir = output_dir.as_ref();
-
-    // Collect all registered types
-    let types: Vec<_> = inventory::iter::<TypeInfo>()
-        .map(|info| (info.get_type)())
-        .collect();
-
+    let types = collect_registered_types();
     if types.is_empty() {
         eprintln!(
             "⚠️  Warning: No types found. Make sure you have #[derive(GearMesh)] on your types."
@@ -84,97 +92,50 @@ pub fn generate_types_to_dir(output_dir: impl AsRef<std::path::Path>) -> std::io
         return Ok(());
     }
 
-    // Create output directory
     fs::create_dir_all(output_dir)?;
 
-    // Generate config
-    let config = GeneratorConfig::new().with_zod(true).with_validation(true);
+    let organizer = crate::ModuleOrganizer::new(&types);
+    let modules = organizer.organize(&types, &config.module_strategy);
+    let type_index = organizer.build_type_index(&modules);
 
-    let validator = crate::ValidationGenerator::new(config.clone());
-    let mut exports = Vec::new();
-
-    for ty in &types {
-        let file_name = format!("{}.ts", ty.name);
-        let file_path = output_dir.join(&file_name);
-
-        let mut content = String::new();
-
-        // Zod import
-        if config.generate_zod {
-            content.push_str("import { z } from 'zod';\n");
+    for (relative_path, module_types) in &modules {
+        let file_path = output_dir.join(relative_path);
+        if let Some(parent) = file_path.parent() {
+            fs::create_dir_all(parent)?;
         }
 
-        // Extract type dependencies and generate imports
-        let deps = crate::extract_type_dependencies(ty);
-        let mut sorted_deps: Vec<_> = deps.iter().collect();
-        sorted_deps.sort();
-
-        for dep in sorted_deps {
-            // Skip self-reference
-            if dep != &ty.name {
-                // Import both type and schema
-                if config.generate_zod {
-                    content.push_str(&format!(
-                        "import type {{ {} }} from './{}';\nimport {{ {}Schema }} from './{}';\n",
-                        dep, dep, dep, dep
-                    ));
-                } else {
-                    content.push_str(&format!("import type {{ {} }} from './{}';\n", dep, dep));
-                }
-            }
-        }
-
-        if !deps.is_empty() {
-            content.push('\n');
-        }
-
-        // Branded Type helper if this type needs it
-        if config.generate_branded && ty.attributes.branded {
-            content.push_str("\n// Branded Type helper\n");
-            content.push_str("type Brand<T, B> = T & { readonly __brand: B };\n");
-        }
-
-        content.push('\n');
-
-        // Generate the type
-        let mut generator = TypeScriptGenerator::new(config.clone());
-        generator.generate_type(ty);
-        content.push_str(&generator.output);
-
-        // Generate Zod schema
-        if config.generate_zod {
-            // Branded typeの場合は専用のスキーマ生成
-            if ty.attributes.branded {
-                let branded_gen = crate::BrandedTypeGenerator::new(config.clone());
-                if let Some(schema) = branded_gen.generate_zod_schema(ty) {
-                    content.push_str("\n// Zod Schema\n\n");
-                    content.push_str(&schema);
-                }
-            } else if let Some(schema) = validator.generate_zod_schema(ty) {
-                content.push_str("\n// Zod Schema\n\n");
-                content.push_str(&schema);
-            }
-        }
-
+        let imports = organizer.generate_imports(
+            relative_path,
+            module_types,
+            &type_index,
+            config.generate_zod,
+        );
+        let mut generator = crate::TypeScriptGenerator::new(config.clone());
+        let content = generator.generate_with_imports(module_types, &imports);
         fs::write(&file_path, content)?;
-        exports.push(ty.name.clone());
-        println!("  ✓ {}", file_name);
+        println!("  ✓ {}", relative_path);
     }
 
-    // Generate index.ts
-    let mut index_content = String::new();
-    index_content.push_str("// Auto-generated index file\n");
-    index_content.push_str("// Re-exports all types\n\n");
+    if !matches!(config.module_strategy, crate::ModuleStrategy::SingleFile) {
+        let mut index_content = String::new();
+        index_content.push_str("// Auto-generated index file\n");
+        index_content.push_str("// Re-exports all generated modules\n\n");
 
-    for type_name in &exports {
-        index_content.push_str(&format!("export * from './{}';\n", type_name));
+        for relative_path in modules.keys() {
+            let export_path = relative_path.strip_suffix(".ts").unwrap_or(relative_path);
+            index_content.push_str(&format!("export * from './{}';\n", export_path));
+        }
+
+        fs::write(output_dir.join("index.ts"), index_content)?;
     }
-
-    fs::write(output_dir.join("index.ts"), index_content)?;
 
     println!("✅ Generated TypeScript types to: {}", output_dir.display());
     println!("   {} types exported", types.len());
-    println!("   📄 index.ts created");
-
     Ok(())
+}
+
+fn collect_registered_types() -> Vec<crate::GearMeshType> {
+    inventory::iter::<TypeInfo>()
+        .map(|info| (info.get_type)())
+        .collect()
 }

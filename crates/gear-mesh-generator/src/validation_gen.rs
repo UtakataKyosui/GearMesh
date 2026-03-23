@@ -1,7 +1,8 @@
 use crate::utils::{format_property_name, resolve_field_name};
 use crate::{GeneratorConfig, OptionStyle, ResultStyle};
 use gear_mesh_core::{
-    FieldInfo, GearMeshType, TypeKind, is_bigint_type, is_builtin_type, is_internal_type,
+    CrossFieldRule, FieldInfo, GearMeshType, TypeKind, ValidationRule, is_bigint_type,
+    is_builtin_type, is_internal_type,
 };
 
 /// Generator for Zod validation schemas
@@ -29,7 +30,13 @@ impl ValidationGenerator {
                     schema.push_str(&format!("    {}: {},\n", field_name, field_schema));
                 }
 
-                schema.push_str("});\n");
+                schema.push_str("})");
+                for field in &s.fields {
+                    for refinement in self.object_refinements(field) {
+                        schema.push_str(&refinement);
+                    }
+                }
+                schema.push_str(";\n");
                 Some(schema)
             }
             _ => None,
@@ -61,6 +68,12 @@ impl ValidationGenerator {
 
         // IMPORTANT: Add validation rules BEFORE nullable
         for rule in &field.validations {
+            if matches!(
+                rule,
+                ValidationRule::CrossField { .. } | ValidationRule::Conditional { .. }
+            ) {
+                continue;
+            }
             result.push_str(&rule.to_zod_schema(is_bigint));
         }
 
@@ -74,6 +87,10 @@ impl ValidationGenerator {
 
     /// Recursively generates a Zod schema from a TypeRef
     fn type_to_zod(&self, type_ref: &gear_mesh_core::TypeRef) -> String {
+        if let Some(transformed) = self.transformer_schema(type_ref) {
+            return transformed;
+        }
+
         match type_ref.name.as_str() {
             "__array__" | "__slice__" => {
                 if !type_ref.generics.is_empty() {
@@ -239,10 +256,158 @@ impl ValidationGenerator {
             ),
         }
     }
+
+    fn object_refinements(&self, field: &FieldInfo) -> Vec<String> {
+        field
+            .validations
+            .iter()
+            .filter_map(|rule| render_object_refinement(field, rule))
+            .collect()
+    }
+
+    fn transformer_schema(&self, type_ref: &gear_mesh_core::TypeRef) -> Option<String> {
+        self.config
+            .transformers
+            .iter()
+            .find(|transformer| transformer.can_handle(&type_ref.name))
+            .and_then(|transformer| transformer.transform_zod(type_ref))
+    }
 }
 
 impl Default for ValidationGenerator {
     fn default() -> Self {
         Self::new(GeneratorConfig::default())
+    }
+}
+
+fn default_cross_field_message(rule: &CrossFieldRule, fields: &[String]) -> String {
+    match rule {
+        CrossFieldRule::Match => format!("{} must match {}", fields[0], fields[1]),
+        CrossFieldRule::AtLeastOne => "At least one field must be provided".to_string(),
+        CrossFieldRule::MutuallyExclusive => "Fields are mutually exclusive".to_string(),
+    }
+}
+
+fn render_object_refinement(field: &FieldInfo, rule: &ValidationRule) -> Option<String> {
+    match rule {
+        ValidationRule::CrossField {
+            fields,
+            rule,
+            message,
+            path,
+        } => {
+            let expression = match rule {
+                CrossFieldRule::Match => {
+                    let mut iter = fields.iter();
+                    let first = iter.next()?;
+                    let comparisons = iter
+                        .map(|other| format!("data.{first} === data.{other}"))
+                        .collect::<Vec<_>>();
+                    if comparisons.is_empty() {
+                        return None;
+                    }
+                    comparisons.join(" && ")
+                }
+                CrossFieldRule::AtLeastOne => fields
+                    .iter()
+                    .map(|field| {
+                        format!(
+                            "data.{field} !== undefined && data.{field} !== null && data.{field} !== ''"
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" || "),
+                CrossFieldRule::MutuallyExclusive => format!(
+                    "[{}].filter(Boolean).length <= 1",
+                    fields
+                        .iter()
+                        .map(|field| format!("data.{field}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            };
+
+            let message = message
+                .clone()
+                .unwrap_or_else(|| default_cross_field_message(rule, fields));
+            let path = path.clone().unwrap_or_else(|| field.name.clone());
+            Some(format!(
+                ".refine((data) => {}, {{ message: \"{}\", path: [\"{}\"] }})",
+                expression, message, path
+            ))
+        }
+        ValidationRule::Conditional { condition, rule } => {
+            let refinement = refinement_spec(field, rule)?;
+            Some(format!(
+                ".refine((data) => !({}) || ({}), {{ message: \"{}\", path: [\"{}\"] }})",
+                condition, refinement.expression, refinement.message, refinement.path
+            ))
+        }
+        _ => None,
+    }
+}
+
+struct RefinementSpec {
+    expression: String,
+    message: String,
+    path: String,
+}
+
+fn refinement_spec(field: &FieldInfo, rule: &ValidationRule) -> Option<RefinementSpec> {
+    match rule {
+        ValidationRule::CrossField {
+            fields,
+            rule,
+            message,
+            path,
+        } => {
+            let expression = match rule {
+                CrossFieldRule::Match => {
+                    let mut iter = fields.iter();
+                    let first = iter.next()?;
+                    let comparisons = iter
+                        .map(|other| format!("data.{first} === data.{other}"))
+                        .collect::<Vec<_>>();
+                    if comparisons.is_empty() {
+                        return None;
+                    }
+                    comparisons.join(" && ")
+                }
+                CrossFieldRule::AtLeastOne => fields
+                    .iter()
+                    .map(|field| {
+                        format!(
+                            "data.{field} !== undefined && data.{field} !== null && data.{field} !== ''"
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(" || "),
+                CrossFieldRule::MutuallyExclusive => format!(
+                    "[{}].filter(Boolean).length <= 1",
+                    fields
+                        .iter()
+                        .map(|field| format!("data.{field}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            };
+
+            Some(RefinementSpec {
+                expression,
+                message: message
+                    .clone()
+                    .unwrap_or_else(|| default_cross_field_message(rule, fields)),
+                path: path.clone().unwrap_or_else(|| field.name.clone()),
+            })
+        }
+        ValidationRule::Custom { name, message } => Some(RefinementSpec {
+            expression: format!("validate{name}(data.{})", field.name),
+            message: message
+                .clone()
+                .unwrap_or_else(|| format!("{} failed validation", field.name)),
+            path: field.name.clone(),
+        }),
+        ValidationRule::Conditional { condition: _, rule } => refinement_spec(field, rule),
+        _ => None,
     }
 }

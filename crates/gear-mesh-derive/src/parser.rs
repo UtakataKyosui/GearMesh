@@ -84,7 +84,7 @@ fn parse_struct(fields: &Fields, attrs: &TypeAttributes) -> Result<TypeKind> {
                     let name = f.ident.as_ref().unwrap().to_string();
                     let ty = parse_type_ref(&f.ty)?;
                     let docs = extract_doc_comments(&f.attrs);
-                    let validations = parse_validate_attrs(&f.attrs)?;
+                    let validations = parse_validate_attrs(&f.attrs, Some(&name))?;
                     let rename = parse_serde_rename(&f.attrs);
                     let optional = is_option_type(&f.ty);
 
@@ -161,7 +161,7 @@ fn parse_variant(variant: &syn::Variant) -> Result<EnumVariant> {
                     let field_name = f.ident.as_ref().unwrap().to_string();
                     let ty = parse_type_ref(&f.ty)?;
                     let field_docs = extract_doc_comments(&f.attrs);
-                    let validations = parse_validate_attrs(&f.attrs)?;
+                    let validations = parse_validate_attrs(&f.attrs, Some(&field_name))?;
                     let rename = parse_serde_rename(&f.attrs);
 
                     Ok(FieldInfo {
