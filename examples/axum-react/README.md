@@ -95,8 +95,12 @@ axum-react/
 ```rust
 use gear_mesh::GearMesh;
 
+use newer_type::implement;
+use newer_type_std::fmt::Display;
+
 /// User ID (Branded Type)
 #[derive(GearMesh)]
+#[implement(Display)]
 #[gear_mesh(branded)]
 pub struct UserId(pub i32);
 
