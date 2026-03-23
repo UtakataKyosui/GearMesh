@@ -1,7 +1,7 @@
+use crate::utils::{format_property_name, resolve_field_name};
 use crate::{GeneratorConfig, OptionStyle, ResultStyle};
 use gear_mesh_core::{
-    FieldInfo, GearMeshType, RenameRule, TypeKind, is_bigint_type, is_builtin_type,
-    is_internal_type,
+    FieldInfo, GearMeshType, TypeKind, is_bigint_type, is_builtin_type, is_internal_type,
 };
 
 /// Generator for Zod validation schemas
@@ -244,51 +244,5 @@ impl ValidationGenerator {
 impl Default for ValidationGenerator {
     fn default() -> Self {
         Self::new(GeneratorConfig::default())
-    }
-}
-
-fn format_property_name(name: &str) -> String {
-    if is_plain_javascript_identifier(name) {
-        name.to_string()
-    } else {
-        format!("{name:?}")
-    }
-}
-
-fn resolve_field_name(field: &FieldInfo, rename_all: Option<RenameRule>) -> String {
-    if let Some(rename) = &field.serde_attrs.rename {
-        rename.clone()
-    } else {
-        apply_rename_all(&field.name, rename_all)
-    }
-}
-
-fn apply_rename_all(name: &str, rename_all: Option<RenameRule>) -> String {
-    rename_all
-        .map(|rule| rule.apply(name))
-        .unwrap_or_else(|| name.to_string())
-}
-
-fn is_plain_javascript_identifier(name: &str) -> bool {
-    let mut chars = name.chars();
-    let Some(first) = chars.next() else {
-        return false;
-    };
-
-    if !(first.is_ascii_alphabetic() || first == '_' || first == '$') {
-        return false;
-    }
-
-    chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
-}
-
-#[cfg(test)]
-mod tests {
-    use super::format_property_name;
-
-    #[test]
-    fn test_format_property_name_quotes_non_identifiers() {
-        assert_eq!(format_property_name("displayName"), "displayName");
-        assert_eq!(format_property_name("display-name"), "\"display-name\"");
     }
 }

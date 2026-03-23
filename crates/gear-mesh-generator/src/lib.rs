@@ -48,9 +48,9 @@ pub trait GearMeshExport {
 pub enum OptionStyle {
     /// Generate `T | null`.
     Nullable,
-    /// Generate `T | undefined`.
+    /// Generate an optional property key with type `T`, and `T | undefined` in nested contexts.
     Optional,
-    /// Generate `T | null | undefined`.
+    /// Generate an optional property key with type `T | null`, and `T | null | undefined` in nested contexts.
     Both,
 }
 

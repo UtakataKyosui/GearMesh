@@ -5,6 +5,7 @@ use gear_mesh_core::{
     TypeAttributes, TypeKind, TypeRef, VariantContent, to_typescript_primitive,
 };
 
+use crate::utils::{apply_rename_all, format_property_name, resolve_field_name};
 use crate::{GeneratorConfig, OptionStyle, ResultStyle};
 
 /// TypeScript生成器
@@ -274,7 +275,10 @@ impl TypeScriptGenerator {
         match type_ref.name.as_str() {
             "Vec" | "__array__" | "__slice__" => {
                 if let Some(inner) = type_ref.generics.first() {
-                    format!("{}[]", self.type_ref_to_typescript(inner))
+                    format!(
+                        "{}[]",
+                        wrap_array_element_type(self.type_ref_to_typescript(inner))
+                    )
                 } else {
                     "unknown[]".to_string()
                 }
@@ -348,8 +352,8 @@ impl TypeScriptGenerator {
     fn wrap_option_type(&self, inner: String) -> String {
         match self.config.option_style {
             OptionStyle::Nullable => format!("{} | null", inner),
-            OptionStyle::Optional => inner,
-            OptionStyle::Both => format!("{} | null", inner),
+            OptionStyle::Optional => format!("{} | undefined", inner),
+            OptionStyle::Both => format!("{} | null | undefined", inner),
         }
     }
 
@@ -400,39 +404,12 @@ impl TypeScriptGenerator {
     }
 }
 
-fn format_property_name(name: &str) -> String {
-    if is_plain_typescript_identifier(name) {
-        name.to_string()
+fn wrap_array_element_type(inner: String) -> String {
+    if inner.contains('|') || inner.contains('&') {
+        format!("({inner})")
     } else {
-        format!("{name:?}")
+        inner
     }
-}
-
-fn resolve_field_name(field: &FieldInfo, rename_all: Option<RenameRule>) -> String {
-    if let Some(rename) = &field.serde_attrs.rename {
-        rename.clone()
-    } else {
-        apply_rename_all(&field.name, rename_all)
-    }
-}
-
-fn apply_rename_all(name: &str, rename_all: Option<RenameRule>) -> String {
-    rename_all
-        .map(|rule| rule.apply(name))
-        .unwrap_or_else(|| name.to_string())
-}
-
-fn is_plain_typescript_identifier(name: &str) -> bool {
-    let mut chars = name.chars();
-    let Some(first) = chars.next() else {
-        return false;
-    };
-
-    if !(first.is_ascii_alphabetic() || first == '_' || first == '$') {
-        return false;
-    }
-
-    chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
 }
 
 #[cfg(test)]
@@ -503,8 +480,11 @@ mod tests {
     }
 
     #[test]
-    fn test_format_property_name_quotes_non_identifiers() {
-        assert_eq!(format_property_name("displayName"), "displayName");
-        assert_eq!(format_property_name("display-name"), "\"display-name\"");
+    fn test_wrap_array_element_type_parenthesizes_unions() {
+        assert_eq!(wrap_array_element_type("string".to_string()), "string");
+        assert_eq!(
+            wrap_array_element_type("string | undefined".to_string()),
+            "(string | undefined)"
+        );
     }
 }

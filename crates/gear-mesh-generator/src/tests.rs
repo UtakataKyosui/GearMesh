@@ -195,6 +195,73 @@ fn test_option_type_generation_with_optional_style() {
 }
 
 #[test]
+fn test_nested_option_type_generation_with_optional_style_includes_undefined() {
+    let optional_type = GearMeshType {
+        name: "NestedOptionalData".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "items".to_string(),
+                ty: TypeRef::with_generics(
+                    "Vec",
+                    vec![TypeRef::with_generics(
+                        "Option",
+                        vec![TypeRef::new("String")],
+                    )],
+                ),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: Default::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator =
+        TypeScriptGenerator::new(GeneratorConfig::new().with_option_style(OptionStyle::Optional));
+    let output = generator.generate(&[optional_type]);
+
+    assert!(output.contains("items: (string | undefined)[];"));
+}
+
+#[test]
+fn test_nested_option_type_generation_with_both_style_includes_null_and_undefined() {
+    let optional_type = GearMeshType {
+        name: "NestedOptionalData".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "value".to_string(),
+                ty: TypeRef::with_generics(
+                    "Result",
+                    vec![
+                        TypeRef::with_generics("Option", vec![TypeRef::new("String")]),
+                        TypeRef::new("String"),
+                    ],
+                ),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: Default::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator = TypeScriptGenerator::new(
+        GeneratorConfig::new()
+            .with_option_style(OptionStyle::Both)
+            .with_result_style(ResultStyle::TaggedUnion),
+    );
+    let output = generator.generate(&[optional_type]);
+
+    assert!(output.contains("{ ok: string | null | undefined } | { err: string };"));
+}
+
+#[test]
 fn test_result_type_generation_with_tagged_union_style() {
     let result_holder = GearMeshType {
         name: "ApiResponse".to_string(),
