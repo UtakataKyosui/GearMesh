@@ -21,7 +21,10 @@ impl ValidationGenerator {
 
                 for field in &s.fields {
                     let field_schema = self.field_to_zod(field);
-                    schema.push_str(&format!("    {}: {},\n", field.name, field_schema));
+                    let field_name = format_property_name(
+                        field.serde_attrs.rename.as_deref().unwrap_or(&field.name),
+                    );
+                    schema.push_str(&format!("    {}: {},\n", field_name, field_schema));
                 }
 
                 schema.push_str("});\n");
@@ -239,5 +242,37 @@ impl ValidationGenerator {
 impl Default for ValidationGenerator {
     fn default() -> Self {
         Self::new(GeneratorConfig::default())
+    }
+}
+
+fn format_property_name(name: &str) -> String {
+    if is_plain_javascript_identifier(name) {
+        name.to_string()
+    } else {
+        format!("{name:?}")
+    }
+}
+
+fn is_plain_javascript_identifier(name: &str) -> bool {
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+
+    if !(first.is_ascii_alphabetic() || first == '_' || first == '$') {
+        return false;
+    }
+
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_property_name;
+
+    #[test]
+    fn test_format_property_name_quotes_non_identifiers() {
+        assert_eq!(format_property_name("displayName"), "displayName");
+        assert_eq!(format_property_name("display-name"), "\"display-name\"");
     }
 }

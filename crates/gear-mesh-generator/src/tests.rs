@@ -656,6 +656,63 @@ fn test_zod_result_generation_with_tagged_union_style() {
 }
 
 #[test]
+fn test_typescript_generation_respects_serde_rename_with_quoted_key() {
+    let ty = GearMeshType {
+        name: "RenamedFields".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "display_name".to_string(),
+                ty: TypeRef::new("String"),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: gear_mesh_core::SerdeFieldAttrs {
+                    rename: Some("display-name".to_string()),
+                    ..Default::default()
+                },
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new());
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("\"display-name\": string;"));
+}
+
+#[test]
+fn test_zod_generation_respects_serde_rename_with_quoted_key() {
+    let ty = GearMeshType {
+        name: "RenamedFields".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "display_name".to_string(),
+                ty: TypeRef::with_generics("Option", vec![TypeRef::new("String")]),
+                docs: None,
+                validations: vec![],
+                optional: true,
+                serde_attrs: gear_mesh_core::SerdeFieldAttrs {
+                    rename: Some("display-name".to_string()),
+                    ..Default::default()
+                },
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes::default(),
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new().with_zod(true));
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("\"display-name\": string | null;"));
+    assert!(output.contains("\"display-name\": z.string().nullable()"));
+}
+
+#[test]
 fn test_snapshot_simple_struct_output() {
     let ty = GearMeshType {
         name: "User".to_string(),

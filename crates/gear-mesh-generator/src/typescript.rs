@@ -127,7 +127,8 @@ impl TypeScriptGenerator {
                 .push_str(&format!("{}{}\n", indent, docs.to_inline_jsdoc()));
         }
 
-        let field_name = field.serde_attrs.rename.as_ref().unwrap_or(&field.name);
+        let field_name =
+            format_property_name(field.serde_attrs.rename.as_deref().unwrap_or(&field.name));
         let optional = if self.is_optional_field(field) {
             "?"
         } else {
@@ -394,6 +395,27 @@ impl TypeScriptGenerator {
     }
 }
 
+fn format_property_name(name: &str) -> String {
+    if is_plain_typescript_identifier(name) {
+        name.to_string()
+    } else {
+        format!("{name:?}")
+    }
+}
+
+fn is_plain_typescript_identifier(name: &str) -> bool {
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+
+    if !(first.is_ascii_alphabetic() || first == '_' || first == '$') {
+        return false;
+    }
+
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -459,5 +481,11 @@ mod tests {
         assert!(
             output.contains("export const UserId = (value: number): UserId => value as UserId;")
         );
+    }
+
+    #[test]
+    fn test_format_property_name_quotes_non_identifiers() {
+        assert_eq!(format_property_name("displayName"), "displayName");
+        assert_eq!(format_property_name("display-name"), "\"display-name\"");
     }
 }
