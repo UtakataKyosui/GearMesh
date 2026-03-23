@@ -11,6 +11,15 @@ repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
 
+[features]
+default = []
+cli = ["dep:anyhow", "dep:clap", "dep:notify", "dep:serde", "dep:serde_json"]
+
+[[bin]]
+name = "gear-mesh"
+path = "src/bin/gear-mesh.rs"
+required-features = ["cli"]
+
 [dependencies]
 # Re-export all functionality from generator
 gear-mesh-generator = { workspace = true }
@@ -24,6 +33,12 @@ gear-mesh-derive = { workspace = true }
 # Automatic type collection
 inventory = "0.3"
 once_cell = "1.19"
+anyhow = { workspace = true, optional = true }
+clap = { workspace = true, optional = true }
+notify = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+sha2 = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }

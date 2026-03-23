@@ -63,14 +63,24 @@ pub fn generate_with_config(
         );
     }
 
-    let mut generator = crate::TypeScriptGenerator::new(config);
-    let output_content = generator.generate(&types);
-
+    let mut generator = crate::TypeScriptGenerator::new(config.clone());
+    let output = generator.generate(&types);
     let output_path = output_path.as_ref();
+
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::write(output_path, output_content)?;
+
+    let cache_path = crate::cache::cache_file(&config.cache_dir);
+    let mut cache = if config.enable_cache {
+        crate::cache::OutputCache::load(&cache_path)
+    } else {
+        crate::cache::OutputCache::default()
+    };
+    write_output(output_path, &output, config.enable_cache, &mut cache)?;
+    if config.enable_cache {
+        cache.persist(&cache_path)?;
+    }
 
     println!("✅ Generated TypeScript types: {}", output_path.display());
     println!("   {} types exported", types.len());
@@ -97,6 +107,12 @@ pub fn generate_types_to_dir_with_config(
     let organizer = crate::ModuleOrganizer::new(&types);
     let modules = organizer.organize(&types, &config.module_strategy);
     let type_index = organizer.build_type_index(&modules);
+    let cache_path = crate::cache::cache_file(&config.cache_dir);
+    let mut cache = if config.enable_cache {
+        crate::cache::OutputCache::load(&cache_path)
+    } else {
+        crate::cache::OutputCache::default()
+    };
 
     for (relative_path, module_types) in &modules {
         let file_path = output_dir.join(relative_path);
@@ -112,7 +128,7 @@ pub fn generate_types_to_dir_with_config(
         );
         let mut generator = crate::TypeScriptGenerator::new(config.clone());
         let content = generator.generate_with_imports(module_types, &imports);
-        fs::write(&file_path, content)?;
+        write_output(&file_path, &content, config.enable_cache, &mut cache)?;
         println!("  ✓ {}", relative_path);
     }
 
@@ -126,7 +142,17 @@ pub fn generate_types_to_dir_with_config(
             index_content.push_str(&format!("export * from './{}';\n", export_path));
         }
 
-        fs::write(output_dir.join("index.ts"), index_content)?;
+        write_output(
+            &output_dir.join("index.ts"),
+            &index_content,
+            config.enable_cache,
+            &mut cache,
+        )?;
+        println!("   📄 index.ts created");
+    }
+
+    if config.enable_cache {
+        cache.persist(&cache_path)?;
     }
 
     println!("✅ Generated TypeScript types to: {}", output_dir.display());
@@ -138,4 +164,24 @@ fn collect_registered_types() -> Vec<crate::GearMeshType> {
     inventory::iter::<TypeInfo>()
         .map(|info| (info.get_type)())
         .collect()
+}
+
+fn write_output(
+    path: &std::path::Path,
+    content: &str,
+    use_cache: bool,
+    cache: &mut crate::cache::OutputCache,
+) -> std::io::Result<()> {
+    use std::fs;
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    if !use_cache || cache.has_changed(path, content) || !path.exists() {
+        fs::write(path, content)?;
+        cache.update(path, content);
+    }
+
+    Ok(())
 }

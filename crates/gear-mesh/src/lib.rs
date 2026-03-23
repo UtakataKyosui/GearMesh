@@ -85,9 +85,12 @@ pub use gear_mesh_derive::GearMesh;
 pub use inventory;
 
 // Automatic type collection
+mod cache;
 mod inventory_collect;
+mod migration;
 pub use inventory_collect::{TypeInfo, generate_types, generate_types_to_dir};
 pub use inventory_collect::{generate_types_to_dir_with_config, generate_with_config};
+pub use migration::{MigrationReport, diff_typescript, parse_typescript_snapshot};
 
 // Output path registry for automatic generation
 mod output_registry;

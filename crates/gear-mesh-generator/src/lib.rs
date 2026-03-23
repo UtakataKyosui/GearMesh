@@ -3,14 +3,15 @@
 //! This crate provides TypeScript code generation from Rust types
 //! and serves as the main entry point for the gear-mesh library.
 
+use std::fmt;
+use std::path::PathBuf;
+use std::sync::Arc;
+
 mod branded;
 mod module_organizer;
 mod typescript;
 pub mod utils;
 mod validation_gen;
-
-use std::fmt;
-use std::sync::Arc;
 
 #[cfg(test)]
 mod tests;
@@ -95,6 +96,8 @@ pub struct GeneratorConfig {
     pub generate_zod: bool,
     /// JSDocを生成するか
     pub generate_jsdoc: bool,
+    /// 詳細なJSDocタグを追加するか
+    pub enhanced_jsdoc: bool,
     /// `Option<T>` の出力スタイル
     pub option_style: OptionStyle,
     /// `Result<T, E>` の出力スタイル
@@ -103,6 +106,10 @@ pub struct GeneratorConfig {
     pub module_strategy: ModuleStrategy,
     /// カスタム型変換プラグイン
     pub transformers: Vec<Arc<dyn TypeTransformer>>,
+    /// インクリメンタルキャッシュを有効にするか
+    pub enable_cache: bool,
+    /// キャッシュディレクトリ
+    pub cache_dir: PathBuf,
     /// インデント文字列
     pub indent: String,
 }
@@ -115,10 +122,13 @@ impl fmt::Debug for GeneratorConfig {
             .field("generate_validation", &self.generate_validation)
             .field("generate_zod", &self.generate_zod)
             .field("generate_jsdoc", &self.generate_jsdoc)
+            .field("enhanced_jsdoc", &self.enhanced_jsdoc)
             .field("option_style", &self.option_style)
             .field("result_style", &self.result_style)
             .field("module_strategy", &self.module_strategy)
             .field("transformers", &self.transformers.len())
+            .field("enable_cache", &self.enable_cache)
+            .field("cache_dir", &self.cache_dir)
             .field("indent", &self.indent)
             .finish()
     }
@@ -138,10 +148,13 @@ impl GeneratorConfig {
             generate_validation: false,
             generate_zod: false,
             generate_jsdoc: true,
+            enhanced_jsdoc: false,
             option_style: OptionStyle::Nullable,
             result_style: ResultStyle::OkOnly,
             module_strategy: ModuleStrategy::SingleFile,
             transformers: Vec::new(),
+            enable_cache: false,
+            cache_dir: PathBuf::from(".gear-mesh-cache"),
             indent: "    ".to_string(),
         }
     }
@@ -171,6 +184,11 @@ impl GeneratorConfig {
         self
     }
 
+    pub fn with_enhanced_jsdoc(mut self, enabled: bool) -> Self {
+        self.enhanced_jsdoc = enabled;
+        self
+    }
+
     pub fn with_option_style(mut self, option_style: OptionStyle) -> Self {
         self.option_style = option_style;
         self
@@ -196,6 +214,16 @@ impl GeneratorConfig {
 
     pub fn with_transformer_arc(mut self, transformer: Arc<dyn TypeTransformer>) -> Self {
         self.transformers.push(transformer);
+        self
+    }
+
+    pub fn with_cache(mut self, enabled: bool) -> Self {
+        self.enable_cache = enabled;
+        self
+    }
+
+    pub fn with_cache_dir(mut self, cache_dir: impl Into<PathBuf>) -> Self {
+        self.cache_dir = cache_dir.into();
         self
     }
 }
