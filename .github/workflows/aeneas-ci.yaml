@@ -1,0 +1,39 @@
+name: Aeneas Verification
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'tests/aeneas-smoke/**'
+      - '.github/workflows/aeneas-ci.yaml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'tests/aeneas-smoke/**'
+      - '.github/workflows/aeneas-ci.yaml'
+  workflow_dispatch:
+
+jobs:
+  aeneas-smoke:
+    name: Aeneas Smoke Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/determinate-nix-action@v3
+
+      - name: Generate LLBC with Charon
+        working-directory: tests/aeneas-smoke
+        run: |
+          set -euo pipefail
+          nix run github:AeneasVerif/aeneas#charon -L -- cargo --preset=aeneas
+          find . -maxdepth 1 -name '*.llbc' -print | tee /tmp/aeneas-llbc.txt
+          test -s /tmp/aeneas-llbc.txt
+
+      - name: Translate LLBC with Aeneas
+        working-directory: tests/aeneas-smoke
+        run: |
+          set -euo pipefail
+          LLBC_FILE="$(head -n 1 /tmp/aeneas-llbc.txt)"
+          nix run github:AeneasVerif/aeneas -L -- -backend lean "$LLBC_FILE"

@@ -89,6 +89,10 @@ Located in `crates/gear-mesh-generator/src/tests.rs` and `crates/gear-mesh-gener
 - `rename_all`
 - `rename` field attribute
 
+### Verification Tooling
+
+- Aeneas smoke translation on `tests/aeneas-smoke`
+
 ### Snapshot Tests
 
 Located in `crates/gear-mesh-generator/src/tests.rs` with fixtures under
