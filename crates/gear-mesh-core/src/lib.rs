@@ -4,11 +4,13 @@
 //! 言語非依存の中間表現を提供します。
 
 mod docs;
+mod plugin;
 mod type_utils;
 mod types;
 mod validation;
 
 pub use docs::*;
+pub use plugin::*;
 pub use type_utils::*;
 pub use types::*;
 pub use validation::*;

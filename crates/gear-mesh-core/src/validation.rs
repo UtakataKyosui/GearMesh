@@ -27,6 +27,26 @@ pub enum ValidationRule {
         name: String,
         message: Option<String>,
     },
+    /// フィールド間バリデーション
+    CrossField {
+        fields: Vec<String>,
+        rule: CrossFieldRule,
+        message: Option<String>,
+        path: Option<String>,
+    },
+    /// 条件付きバリデーション
+    Conditional {
+        condition: String,
+        rule: Box<ValidationRule>,
+    },
+}
+
+/// Cross-field validation modes.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum CrossFieldRule {
+    Match,
+    AtLeastOne,
+    MutuallyExclusive,
 }
 
 impl ValidationRule {
@@ -75,6 +95,11 @@ impl ValidationRule {
             }
             ValidationRule::Custom { name, .. } => {
                 format!("validate{name}(obj.{field_name})")
+            }
+            // Cross-field and conditional rules depend on whole-object state and are emitted
+            // only as runtime Zod refinements, not as field-local TypeScript checks.
+            ValidationRule::CrossField { .. } | ValidationRule::Conditional { .. } => {
+                "true".to_string()
             }
         }
     }
@@ -136,6 +161,7 @@ impl ValidationRule {
                     format!(".refine(validate{name})")
                 }
             }
+            ValidationRule::CrossField { .. } | ValidationRule::Conditional { .. } => String::new(),
         }
     }
 }

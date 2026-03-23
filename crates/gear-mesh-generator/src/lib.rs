@@ -4,14 +4,19 @@
 //! and serves as the main entry point for the gear-mesh library.
 
 mod branded;
+mod module_organizer;
 mod typescript;
 pub mod utils;
 mod validation_gen;
+
+use std::fmt;
+use std::sync::Arc;
 
 #[cfg(test)]
 mod tests;
 
 pub use branded::BrandedTypeGenerator;
+pub use module_organizer::{ModuleOrganizer, ModuleStrategy};
 pub use typescript::TypeScriptGenerator;
 pub use validation_gen::ValidationGenerator;
 
@@ -22,7 +27,7 @@ pub use validation_gen::ValidationGenerator;
 pub use gear_mesh_core::{
     DocComment, EnumRepresentation, EnumType, EnumVariant, FieldInfo, GearMeshType, GenericParam,
     NewtypeType, PrimitiveType, SerdeFieldAttrs, StructType, TypeAttributes, TypeKind, TypeRef,
-    ValidationRule, VariantContent,
+    TypeTransformer, ValidationRule, VariantContent,
 };
 
 // Re-export derive macro
@@ -78,7 +83,7 @@ impl Default for ResultStyle {
 }
 
 /// 生成設定
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct GeneratorConfig {
     /// BigIntを自動的に使用するか
     pub use_bigint: bool,
@@ -94,8 +99,29 @@ pub struct GeneratorConfig {
     pub option_style: OptionStyle,
     /// `Result<T, E>` の出力スタイル
     pub result_style: ResultStyle,
+    /// 出力モジュールの構成
+    pub module_strategy: ModuleStrategy,
+    /// カスタム型変換プラグイン
+    pub transformers: Vec<Arc<dyn TypeTransformer>>,
     /// インデント文字列
     pub indent: String,
+}
+
+impl fmt::Debug for GeneratorConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("GeneratorConfig")
+            .field("use_bigint", &self.use_bigint)
+            .field("generate_branded", &self.generate_branded)
+            .field("generate_validation", &self.generate_validation)
+            .field("generate_zod", &self.generate_zod)
+            .field("generate_jsdoc", &self.generate_jsdoc)
+            .field("option_style", &self.option_style)
+            .field("result_style", &self.result_style)
+            .field("module_strategy", &self.module_strategy)
+            .field("transformers", &self.transformers.len())
+            .field("indent", &self.indent)
+            .finish()
+    }
 }
 
 impl Default for GeneratorConfig {
@@ -114,6 +140,8 @@ impl GeneratorConfig {
             generate_jsdoc: true,
             option_style: OptionStyle::Nullable,
             result_style: ResultStyle::OkOnly,
+            module_strategy: ModuleStrategy::SingleFile,
+            transformers: Vec::new(),
             indent: "    ".to_string(),
         }
     }
@@ -150,6 +178,24 @@ impl GeneratorConfig {
 
     pub fn with_result_style(mut self, result_style: ResultStyle) -> Self {
         self.result_style = result_style;
+        self
+    }
+
+    pub fn with_module_strategy(mut self, module_strategy: ModuleStrategy) -> Self {
+        self.module_strategy = module_strategy;
+        self
+    }
+
+    pub fn with_transformer<T>(mut self, transformer: T) -> Self
+    where
+        T: TypeTransformer + 'static,
+    {
+        self.transformers.push(Arc::new(transformer));
+        self
+    }
+
+    pub fn with_transformer_arc(mut self, transformer: Arc<dyn TypeTransformer>) -> Self {
+        self.transformers.push(transformer);
         self
     }
 }

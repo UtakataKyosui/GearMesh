@@ -1,5 +1,7 @@
 //! TypeScriptコード生成の主要ロジック
 
+use std::collections::BTreeSet;
+
 use gear_mesh_core::{
     EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, RenameRule, StructType,
     TypeAttributes, TypeKind, TypeRef, VariantContent, to_typescript_primitive,
@@ -24,12 +26,17 @@ impl TypeScriptGenerator {
 
     /// 複数の型からTypeScriptコードを生成
     pub fn generate(&mut self, types: &[GearMeshType]) -> String {
+        self.generate_with_imports(types, &[])
+    }
+
+    pub fn generate_with_imports(
+        &mut self,
+        types: &[GearMeshType],
+        extra_imports: &[String],
+    ) -> String {
         self.output.clear();
 
-        // Zod import
-        if self.config.generate_zod {
-            self.output.push_str("import { z } from 'zod';\n\n");
-        }
+        self.render_prelude(types, extra_imports);
 
         // Branded Type用のヘルパーを追加
         if self.config.generate_branded && types.iter().any(|t| t.attributes.branded) {
@@ -266,6 +273,10 @@ impl TypeScriptGenerator {
 
     /// TypeRefからTypeScript型文字列へ変換
     fn type_ref_to_typescript(&self, type_ref: &TypeRef) -> String {
+        if let Some(transformed) = self.transformer_type(type_ref) {
+            return transformed;
+        }
+
         if let Some(primitive) =
             to_typescript_primitive(type_ref.name.as_str(), self.config.use_bigint)
         {
@@ -402,6 +413,42 @@ impl TypeScriptGenerator {
             ),
         }
     }
+
+    fn render_prelude(&mut self, types: &[GearMeshType], extra_imports: &[String]) {
+        let mut imports = BTreeSet::new();
+
+        if self.config.generate_zod {
+            imports.insert("import { z } from 'zod';".to_string());
+        }
+
+        for transformer in &self.config.transformers {
+            for ty in types {
+                if contains_transformer_type(ty, transformer.as_ref()) {
+                    for import in transformer.required_imports() {
+                        imports.insert(import);
+                    }
+                }
+            }
+        }
+
+        for import in extra_imports {
+            imports.insert(import.clone());
+        }
+
+        if !imports.is_empty() {
+            self.output
+                .push_str(&imports.into_iter().collect::<Vec<_>>().join("\n"));
+            self.output.push_str("\n\n");
+        }
+    }
+
+    fn transformer_type(&self, type_ref: &TypeRef) -> Option<String> {
+        self.config
+            .transformers
+            .iter()
+            .find(|transformer| transformer.can_handle(&type_ref.name))
+            .and_then(|transformer| transformer.transform_type(type_ref))
+    }
 }
 
 fn wrap_array_element_type(inner: String) -> String {
@@ -412,10 +459,64 @@ fn wrap_array_element_type(inner: String) -> String {
     }
 }
 
+fn contains_transformer_type(
+    ty: &GearMeshType,
+    transformer: &dyn gear_mesh_core::TypeTransformer,
+) -> bool {
+    match &ty.kind {
+        TypeKind::Struct(s) => s
+            .fields
+            .iter()
+            .any(|field| has_transformer_type(&field.ty, transformer)),
+        TypeKind::Enum(e) => e.variants.iter().any(|variant| match &variant.content {
+            VariantContent::Tuple(types) => {
+                types.iter().any(|ty| has_transformer_type(ty, transformer))
+            }
+            VariantContent::Struct(fields) => fields
+                .iter()
+                .any(|field| has_transformer_type(&field.ty, transformer)),
+            VariantContent::Unit => false,
+        }),
+        TypeKind::Newtype(n) => has_transformer_type(&n.inner, transformer),
+        _ => false,
+    }
+}
+
+fn has_transformer_type(
+    type_ref: &TypeRef,
+    transformer: &dyn gear_mesh_core::TypeTransformer,
+) -> bool {
+    transformer.can_handle(&type_ref.name)
+        || type_ref
+            .generics
+            .iter()
+            .any(|inner| has_transformer_type(inner, transformer))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use gear_mesh_core::TypeAttributes;
+
+    struct DateTimeTransformer;
+
+    impl gear_mesh_core::TypeTransformer for DateTimeTransformer {
+        fn can_handle(&self, type_name: &str) -> bool {
+            type_name == "DateTime"
+        }
+
+        fn transform_type(&self, _: &TypeRef) -> Option<String> {
+            Some("Date".to_string())
+        }
+
+        fn transform_zod(&self, _: &TypeRef) -> Option<String> {
+            Some("z.coerce.date()".to_string())
+        }
+
+        fn required_imports(&self) -> Vec<String> {
+            vec!["import { DateTime } from 'luxon';".to_string()]
+        }
+    }
 
     #[test]
     fn test_generate_simple_struct() {
@@ -486,5 +587,35 @@ mod tests {
             wrap_array_element_type("string | undefined".to_string()),
             "(string | undefined)"
         );
+    }
+
+    #[test]
+    fn test_custom_transformer_overrides_typescript_output() {
+        let ty = GearMeshType {
+            name: "AuditLog".to_string(),
+            kind: TypeKind::Struct(StructType {
+                fields: vec![FieldInfo {
+                    name: "created_at".to_string(),
+                    ty: TypeRef::new("DateTime"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                }],
+            }),
+            docs: None,
+            generics: vec![],
+            attributes: TypeAttributes::default(),
+        };
+
+        let mut generator = TypeScriptGenerator::new(
+            GeneratorConfig::new()
+                .with_jsdoc(false)
+                .with_transformer(DateTimeTransformer),
+        );
+        let output = generator.generate(&[ty]);
+
+        assert!(output.contains("import { DateTime } from 'luxon';"));
+        assert!(output.contains("created_at: Date;"));
     }
 }
