@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use gear_mesh_core::{
     EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, RenameRule, StructType,
-    TypeAttributes, TypeKind, TypeRef, VariantContent, to_typescript_primitive,
+    TypeAttributes, TypeKind, TypeRef, ValidationRule, VariantContent, to_typescript_primitive,
 };
 
 use crate::utils::{apply_rename_all, format_property_name, resolve_field_name};
@@ -72,7 +72,12 @@ impl TypeScriptGenerator {
         if self.config.generate_jsdoc
             && let Some(ref docs) = ty.docs
         {
-            self.output.push_str(&docs.to_jsdoc());
+            if self.config.enhanced_jsdoc {
+                self.output
+                    .push_str(&render_type_jsdoc(docs, &ty.name, self.config.generate_zod));
+            } else {
+                self.output.push_str(&docs.to_jsdoc());
+            }
             self.output.push('\n');
         }
 
@@ -129,13 +134,6 @@ impl TypeScriptGenerator {
         let indent = &self.config.indent;
 
         // フィールドのJSDoc
-        if self.config.generate_jsdoc
-            && let Some(ref docs) = field.docs
-        {
-            self.output
-                .push_str(&format!("{}{}\n", indent, docs.to_inline_jsdoc()));
-        }
-
         let field_name = format_property_name(&resolve_field_name(field, rename_all));
         let optional = if self.is_optional_field(field) {
             "?"
@@ -143,6 +141,24 @@ impl TypeScriptGenerator {
             ""
         };
         let ts_type = self.field_type_to_typescript(field);
+
+        if self.config.generate_jsdoc
+            && let Some(ref docs) = field.docs
+        {
+            if self.config.enhanced_jsdoc {
+                self.output.push_str(&render_field_jsdoc(
+                    indent,
+                    docs,
+                    &ts_type,
+                    optional == "?",
+                    &field.validations,
+                ));
+                self.output.push('\n');
+            } else {
+                self.output
+                    .push_str(&format!("{}{}\n", indent, docs.to_inline_jsdoc()));
+            }
+        }
 
         self.output.push_str(&format!(
             "{}{}{}: {};\n",
@@ -493,6 +509,118 @@ fn has_transformer_type(
             .any(|inner| has_transformer_type(inner, transformer))
 }
 
+fn render_type_jsdoc(
+    docs: &gear_mesh_core::DocComment,
+    name: &str,
+    include_schema_ref: bool,
+) -> String {
+    let mut lines = vec!["/**".to_string()];
+
+    if !docs.summary.is_empty() {
+        lines.push(format!(" * {}", docs.summary));
+    }
+
+    if let Some(description) = &docs.description {
+        lines.push(" *".to_string());
+        for line in description.lines() {
+            lines.push(format!(" * {}", line));
+        }
+    }
+
+    lines.push(" *".to_string());
+    lines.push(" * @remarks".to_string());
+    lines.push(" * This type is automatically generated from Rust.".to_string());
+    lines.push(" * Do not modify manually.".to_string());
+
+    if include_schema_ref {
+        lines.push(format!(
+            " * @see {{@link {}Schema}} for runtime validation",
+            name
+        ));
+    }
+
+    lines.push(" */".to_string());
+    lines.join("\n")
+}
+
+fn render_field_jsdoc(
+    indent: &str,
+    docs: &gear_mesh_core::DocComment,
+    ts_type: &str,
+    optional: bool,
+    validations: &[ValidationRule],
+) -> String {
+    let mut lines = vec![format!("{indent}/**")];
+
+    if !docs.summary.is_empty() {
+        lines.push(format!("{indent} * {}", docs.summary));
+    }
+
+    if let Some(description) = &docs.description {
+        lines.push(format!("{indent} *"));
+        for line in description.lines() {
+            lines.push(format!("{indent} * {}", line));
+        }
+    }
+
+    lines.push(format!("{indent} * @type {{{}}}", ts_type));
+    if optional {
+        lines.push(format!("{indent} * @optional"));
+    }
+
+    for tag in validation_tags(validations) {
+        lines.push(format!("{indent} * {}", tag));
+    }
+
+    lines.push(format!("{indent} */"));
+    lines.join("\n")
+}
+
+fn validation_tags(validations: &[ValidationRule]) -> Vec<String> {
+    let mut tags = Vec::new();
+
+    for rule in validations {
+        match rule {
+            ValidationRule::Range { min, max } => {
+                if let Some(min) = min {
+                    tags.push(format!("@minimum {}", min));
+                }
+                if let Some(max) = max {
+                    tags.push(format!("@maximum {}", max));
+                }
+            }
+            ValidationRule::Length { min, max } => {
+                if let Some(min) = min {
+                    tags.push(format!("@minLength {}", min));
+                }
+                if let Some(max) = max {
+                    tags.push(format!("@maxLength {}", max));
+                }
+            }
+            ValidationRule::Email => tags.push("@format email".to_string()),
+            ValidationRule::Url => tags.push("@format uri".to_string()),
+            ValidationRule::Pattern(pattern) => {
+                tags.push(format!("@pattern {}", sanitize_jsdoc_tag_value(pattern)))
+            }
+            ValidationRule::Required => tags.push("@required".to_string()),
+            ValidationRule::Custom { name, message } => {
+                tags.push(format!("@validation {}", sanitize_jsdoc_tag_value(name)));
+                if let Some(message) = message {
+                    tags.push(format!("@message {}", sanitize_jsdoc_tag_value(message)));
+                }
+            }
+            // Cross-field and conditional rules are emitted as object-level Zod refinements,
+            // so there is no stable field-level JSDoc tag representation for them here.
+            ValidationRule::CrossField { .. } | ValidationRule::Conditional { .. } => {}
+        }
+    }
+
+    tags
+}
+
+fn sanitize_jsdoc_tag_value(value: &str) -> String {
+    value.replace("*/", "*\\/").replace('\n', "\\n")
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -588,7 +716,6 @@ mod tests {
             "(string | undefined)"
         );
     }
-
     #[test]
     fn test_custom_transformer_overrides_typescript_output() {
         let ty = GearMeshType {
@@ -617,5 +744,75 @@ mod tests {
 
         assert!(output.contains("import { DateTime } from 'luxon';"));
         assert!(output.contains("created_at: Date;"));
+    }
+
+    #[test]
+    fn test_enhanced_jsdoc_includes_type_and_validation_tags() {
+        let ty = GearMeshType {
+            name: "User".to_string(),
+            kind: TypeKind::Struct(StructType {
+                fields: vec![FieldInfo {
+                    name: "name".to_string(),
+                    ty: TypeRef::new("String"),
+                    docs: Some(gear_mesh_core::DocComment::summary("Display name")),
+                    validations: vec![ValidationRule::Length {
+                        min: Some(1),
+                        max: Some(20),
+                    }],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                }],
+            }),
+            docs: Some(gear_mesh_core::DocComment::summary("User information")),
+            generics: vec![],
+            attributes: TypeAttributes::default(),
+        };
+
+        let mut generator = TypeScriptGenerator::new(
+            GeneratorConfig::new()
+                .with_zod(true)
+                .with_enhanced_jsdoc(true),
+        );
+        let output = generator.generate(&[ty]);
+
+        assert!(output.contains("@remarks"));
+        assert!(output.contains("@see {@link UserSchema}"));
+        assert!(output.contains("@type {string}"));
+        assert!(output.contains("@minLength 1"));
+        assert!(output.contains("@maxLength 20"));
+    }
+
+    #[test]
+    fn enhanced_jsdoc_sanitizes_comment_terminators_and_newlines() {
+        let ty = GearMeshType {
+            name: "RuleDoc".to_string(),
+            kind: TypeKind::Struct(StructType {
+                fields: vec![FieldInfo {
+                    name: "value".to_string(),
+                    ty: TypeRef::new("String"),
+                    docs: Some(gear_mesh_core::DocComment::summary("Docs")),
+                    validations: vec![
+                        ValidationRule::Pattern("foo*/bar".to_string()),
+                        ValidationRule::Custom {
+                            name: "line\nbreak".to_string(),
+                            message: Some("bad*/message".to_string()),
+                        },
+                    ],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                }],
+            }),
+            docs: None,
+            generics: vec![],
+            attributes: TypeAttributes::default(),
+        };
+
+        let mut generator =
+            TypeScriptGenerator::new(GeneratorConfig::new().with_enhanced_jsdoc(true));
+        let output = generator.generate(&[ty]);
+
+        assert!(output.contains("@pattern foo*\\/bar"));
+        assert!(output.contains("@validation line\\nbreak"));
+        assert!(output.contains("@message bad*\\/message"));
     }
 }
