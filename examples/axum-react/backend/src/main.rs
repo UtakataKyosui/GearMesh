@@ -1,11 +1,12 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 use gear_mesh::GearMesh;
+use newer_type::implement;
+use newer_type_std::fmt::Display;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -17,6 +18,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 /// User ID (Branded Type)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, GearMesh)]
+#[implement(Display)]
 #[gear_mesh(branded)]
 pub struct UserId(pub i32);
 
@@ -31,7 +33,7 @@ pub struct User {
     /// User's email address
     #[validate(email)]
     pub email: String,
-    /// User's age (optional)
+    /// User's age (nullable)
     #[validate(range(min = 1, max = 100))]
     pub age: Option<i32>,
 }
@@ -45,7 +47,7 @@ pub struct CreateUserRequest {
     /// Email address
     #[validate(email)]
     pub email: String,
-    /// Age (optional)
+    /// Age (nullable)
     #[validate(range(min = 1, max = 100))]
     pub age: Option<i32>,
 }
@@ -155,6 +157,7 @@ async fn create_user(
         email: req.email,
         age: req.age,
     };
+    let user_id = user.id;
 
     *next_id += 1;
     users.push(user.clone());
@@ -163,7 +166,7 @@ async fn create_user(
         StatusCode::CREATED,
         Json(CreateUserResponse {
             user,
-            message: "User created successfully".to_string(),
+            message: format!("User {user_id} created successfully"),
         }),
     )
 }

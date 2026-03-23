@@ -1,5 +1,8 @@
-use crate::GeneratorConfig;
-use gear_mesh_core::{FieldInfo, GearMeshType, TypeKind};
+use crate::utils::{format_property_name, resolve_field_name};
+use crate::{GeneratorConfig, OptionStyle, ResultStyle};
+use gear_mesh_core::{
+    FieldInfo, GearMeshType, TypeKind, is_bigint_type, is_builtin_type, is_internal_type,
+};
 
 /// Generator for Zod validation schemas
 pub struct ValidationGenerator {
@@ -19,7 +22,11 @@ impl ValidationGenerator {
 
                 for field in &s.fields {
                     let field_schema = self.field_to_zod(field);
-                    schema.push_str(&format!("    {}: {},\n", field.name, field_schema));
+                    let field_name = format_property_name(&resolve_field_name(
+                        field,
+                        ty.attributes.serde.rename_all,
+                    ));
+                    schema.push_str(&format!("    {}: {},\n", field_name, field_schema));
                 }
 
                 schema.push_str("});\n");
@@ -30,7 +37,7 @@ impl ValidationGenerator {
     }
 
     fn field_to_zod(&self, field: &FieldInfo) -> String {
-        let is_option = field.optional;
+        let is_option = field.ty.name == "Option" && field.optional;
 
         // Extract the target type for validation and schema generation.
         // For Option<T> fields, we need to unwrap to get T here because:
@@ -48,7 +55,7 @@ impl ValidationGenerator {
 
         // バリデーションルールの適用のための型判定（BigIntかどうか）
         // NOTE: ここでの判定は最上位の型に対してのみ有効
-        let is_bigint = self.config.use_bigint && crate::utils::is_bigint_type(&target_type.name);
+        let is_bigint = self.config.use_bigint && is_bigint_type(&target_type.name);
 
         let mut result = base_schema;
 
@@ -57,9 +64,9 @@ impl ValidationGenerator {
             result.push_str(&rule.to_zod_schema(is_bigint));
         }
 
-        // Add nullable for Option types AFTER validations
+        // Add the configured Option wrapper AFTER validations
         if is_option {
-            result.push_str(".nullable()");
+            result = self.wrap_option_field_schema(result);
         }
 
         result
@@ -68,8 +75,32 @@ impl ValidationGenerator {
     /// Recursively generates a Zod schema from a TypeRef
     fn type_to_zod(&self, type_ref: &gear_mesh_core::TypeRef) -> String {
         match type_ref.name.as_str() {
+            "__array__" | "__slice__" => {
+                if !type_ref.generics.is_empty() {
+                    let inner_schema = self.type_to_zod(&type_ref.generics[0]);
+                    format!("z.array({})", inner_schema)
+                } else {
+                    "z.array(z.unknown())".to_string()
+                }
+            }
+            "__tuple__" => {
+                let items = type_ref
+                    .generics
+                    .iter()
+                    .map(|item| self.type_to_zod(item))
+                    .collect::<Vec<_>>();
+                format!("z.tuple([{}])", items.join(", "))
+            }
+            "()" => "z.null()".to_string(),
+            "Box" | "Arc" | "Rc" | "Cow" => {
+                if let Some(inner) = type_ref.generics.last() {
+                    self.type_to_zod(inner)
+                } else {
+                    "z.unknown()".to_string()
+                }
+            }
             // プリミティブ型
-            name if crate::utils::is_builtin_type(name) => {
+            name if is_builtin_type(name) => {
                 // コレクション型は個別に処理
                 match name {
                     "Vec" | "Array" => {
@@ -83,16 +114,12 @@ impl ValidationGenerator {
                     "Option" => {
                         if !type_ref.generics.is_empty() {
                             let inner_schema = self.type_to_zod(&type_ref.generics[0]);
-                            // Avoid generating a double-nullable schema like `z.string().nullable().nullable()`
-                            if inner_schema.ends_with(".nullable()") {
-                                inner_schema
-                            } else {
-                                format!("{}.nullable()", inner_schema)
-                            }
+                            self.wrap_nested_option_schema(inner_schema)
                         } else {
-                            "z.unknown().nullable()".to_string()
+                            self.wrap_nested_option_schema("z.unknown()".to_string())
                         }
                     }
+                    "Result" => self.result_to_zod(type_ref),
                     "HashMap" | "BTreeMap" => {
                         let value_schema = if type_ref.generics.len() >= 2 {
                             self.type_to_zod(&type_ref.generics[1])
@@ -113,6 +140,7 @@ impl ValidationGenerator {
                 }
             }
             // カスタム型
+            name if is_internal_type(name) => "z.unknown()".to_string(),
             name => format!("{}Schema", name),
         }
     }
@@ -130,6 +158,85 @@ impl ValidationGenerator {
             "String" | "str" | "char" => "z.string()".to_string(),
             "bool" => "z.boolean()".to_string(),
             _ => "z.unknown()".to_string(),
+        }
+    }
+
+    fn wrap_nested_option_schema(&self, schema: String) -> String {
+        match self.config.option_style {
+            OptionStyle::Nullable => {
+                if schema.ends_with(".nullable()") || schema.ends_with(".nullish()") {
+                    schema
+                } else {
+                    format!("{}.nullable()", schema)
+                }
+            }
+            OptionStyle::Optional => {
+                if schema.ends_with(".optional()") || schema.ends_with(".nullish()") {
+                    schema
+                } else {
+                    format!("{}.optional()", schema)
+                }
+            }
+            OptionStyle::Both => {
+                if schema.ends_with(".nullish()") {
+                    schema
+                } else {
+                    format!("{}.nullish()", schema)
+                }
+            }
+        }
+    }
+
+    fn wrap_option_field_schema(&self, schema: String) -> String {
+        match self.config.option_style {
+            OptionStyle::Nullable => {
+                if schema.ends_with(".nullable()") {
+                    schema
+                } else if schema.ends_with(".nullish()") {
+                    schema.trim_end_matches(".nullish()").to_string() + ".nullable()"
+                } else {
+                    format!("{}.nullable()", schema)
+                }
+            }
+            OptionStyle::Optional => {
+                if schema.ends_with(".optional()") || schema.ends_with(".nullish()") {
+                    schema
+                } else {
+                    format!("{}.optional()", schema)
+                }
+            }
+            OptionStyle::Both => {
+                if schema.ends_with(".nullish()") {
+                    schema
+                } else {
+                    format!("{}.nullish()", schema)
+                }
+            }
+        }
+    }
+
+    fn result_to_zod(&self, type_ref: &gear_mesh_core::TypeRef) -> String {
+        let ok = type_ref
+            .generics
+            .first()
+            .map(|ty| self.type_to_zod(ty))
+            .unwrap_or_else(|| "z.unknown()".to_string());
+        let err = type_ref
+            .generics
+            .get(1)
+            .map(|ty| self.type_to_zod(ty))
+            .unwrap_or_else(|| "z.unknown()".to_string());
+
+        match self.config.result_style {
+            ResultStyle::OkOnly => ok,
+            ResultStyle::TaggedUnion => format!(
+                "z.union([z.object({{ ok: {} }}), z.object({{ err: {} }})])",
+                ok, err
+            ),
+            ResultStyle::SuccessError => format!(
+                "z.union([z.object({{ success: z.literal(true), data: {} }}), z.object({{ success: z.literal(false), error: {} }})])",
+                ok, err
+            ),
         }
     }
 }

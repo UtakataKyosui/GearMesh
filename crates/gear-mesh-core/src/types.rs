@@ -3,6 +3,7 @@
 //! Rust型をTypeScriptに変換する際の、言語非依存な中間形式を定義します。
 
 use serde::{Deserialize, Serialize};
+use strum::{Display, EnumString};
 
 /// gear-mesh型の中間表現
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -272,23 +273,31 @@ pub struct SerdeTypeAttrs {
 }
 
 /// リネームルール
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, EnumString)]
 pub enum RenameRule {
     /// lowercase
+    #[strum(serialize = "lowercase")]
     Lowercase,
     /// UPPERCASE
+    #[strum(serialize = "UPPERCASE")]
     Uppercase,
     /// camelCase
+    #[strum(serialize = "camelCase")]
     CamelCase,
     /// snake_case
+    #[strum(serialize = "snake_case")]
     SnakeCase,
     /// PascalCase
+    #[strum(serialize = "PascalCase")]
     PascalCase,
     /// SCREAMING_SNAKE_CASE
+    #[strum(serialize = "SCREAMING_SNAKE_CASE")]
     ScreamingSnakeCase,
     /// kebab-case
+    #[strum(serialize = "kebab-case")]
     KebabCase,
     /// SCREAMING-KEBAB-CASE
+    #[strum(serialize = "SCREAMING-KEBAB-CASE")]
     ScreamingKebabCase,
 }
 
@@ -363,6 +372,20 @@ mod tests {
         );
         assert_eq!(RenameRule::Lowercase.apply("UserName"), "username");
         assert_eq!(RenameRule::Uppercase.apply("userName"), "USERNAME");
+    }
+
+    #[test]
+    fn test_rename_rule_string_roundtrip() {
+        assert_eq!(
+            "camelCase".parse::<RenameRule>().unwrap(),
+            RenameRule::CamelCase
+        );
+        assert_eq!(
+            "SCREAMING-KEBAB-CASE".parse::<RenameRule>().unwrap(),
+            RenameRule::ScreamingKebabCase
+        );
+        assert_eq!(RenameRule::SnakeCase.to_string(), "snake_case");
+        assert_eq!(RenameRule::Uppercase.to_string(), "UPPERCASE");
     }
 
     #[test]

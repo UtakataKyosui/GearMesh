@@ -95,8 +95,12 @@ axum-react/
 ```rust
 use gear_mesh::GearMesh;
 
+use newer_type::implement;
+use newer_type_std::fmt::Display;
+
 /// User ID (Branded Type)
 #[derive(GearMesh)]
+#[implement(Display)]
 #[gear_mesh(branded)]
 pub struct UserId(pub i32);
 
@@ -109,7 +113,7 @@ pub struct User {
     pub name: String,
     /// User's email address
     pub email: String,
-    /// User's age (optional)
+    /// User's age (nullable)
     pub age: Option<i32>,
 }
 ```
@@ -135,8 +139,8 @@ export interface User {
     name: string;
     /** User's email address */
     email: string;
-    /** User's age (optional) */
-    age?: number | null;
+    /** User's age (nullable) */
+    age: number | null;
 }
 ```
 

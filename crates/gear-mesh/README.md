@@ -94,14 +94,16 @@ export const UserSchema = z.object({
 ## Configuration
 
 ```rust
-use gear_mesh::{GeneratorConfig, generate_with_config};
+use gear_mesh::{GeneratorConfig, OptionStyle, ResultStyle, generate_with_config};
 
 let config = GeneratorConfig::new()
     .with_bigint(true)        // Use bigint for u64/i64
     .with_zod(true)           // Generate Zod schemas
     .with_validation(true)    // Include validation rules
     .with_branded(true)       // Generate Branded Types
-    .with_jsdoc(true);        // Include JSDoc comments
+    .with_jsdoc(true)         // Include JSDoc comments
+    .with_option_style(OptionStyle::Nullable)
+    .with_result_style(ResultStyle::TaggedUnion);
 
 gear_mesh::generate_with_config("generated", config)
     .expect("Failed to generate");

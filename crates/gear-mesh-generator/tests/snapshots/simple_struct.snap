@@ -1,0 +1,10 @@
+/**
+ * User information
+ */
+export interface User {
+    /** User ID */
+    id: number;
+    /** Display name */
+    name: string;
+}
+

@@ -1,0 +1,2 @@
+export type ApiResult = { "Ok": string } | { "Err": number };
+

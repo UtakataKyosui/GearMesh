@@ -43,8 +43,42 @@ pub trait GearMeshExport {
 // Generator Configuration
 // ============================================================================
 
+/// TypeScript mapping strategy for `Option<T>`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OptionStyle {
+    /// Generate `T | null`.
+    Nullable,
+    /// Generate an optional property key with type `T`, and `T | undefined` in nested contexts.
+    Optional,
+    /// Generate an optional property key with type `T | null`, and `T | null | undefined` in nested contexts.
+    Both,
+}
+
+impl Default for OptionStyle {
+    fn default() -> Self {
+        Self::Nullable
+    }
+}
+
+/// TypeScript mapping strategy for `Result<T, E>`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResultStyle {
+    /// Generate only the success type `T`.
+    OkOnly,
+    /// Generate `{ ok: T } | { err: E }`.
+    TaggedUnion,
+    /// Generate `{ success: true; data: T } | { success: false; error: E }`.
+    SuccessError,
+}
+
+impl Default for ResultStyle {
+    fn default() -> Self {
+        Self::OkOnly
+    }
+}
+
 /// 生成設定
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct GeneratorConfig {
     /// BigIntを自動的に使用するか
     pub use_bigint: bool,
@@ -56,8 +90,18 @@ pub struct GeneratorConfig {
     pub generate_zod: bool,
     /// JSDocを生成するか
     pub generate_jsdoc: bool,
+    /// `Option<T>` の出力スタイル
+    pub option_style: OptionStyle,
+    /// `Result<T, E>` の出力スタイル
+    pub result_style: ResultStyle,
     /// インデント文字列
     pub indent: String,
+}
+
+impl Default for GeneratorConfig {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GeneratorConfig {
@@ -68,6 +112,8 @@ impl GeneratorConfig {
             generate_validation: false,
             generate_zod: false,
             generate_jsdoc: true,
+            option_style: OptionStyle::Nullable,
+            result_style: ResultStyle::OkOnly,
             indent: "    ".to_string(),
         }
     }
@@ -94,6 +140,16 @@ impl GeneratorConfig {
 
     pub fn with_jsdoc(mut self, generate: bool) -> Self {
         self.generate_jsdoc = generate;
+        self
+    }
+
+    pub fn with_option_style(mut self, option_style: OptionStyle) -> Self {
+        self.option_style = option_style;
+        self
+    }
+
+    pub fn with_result_style(mut self, result_style: ResultStyle) -> Self {
+        self.result_style = result_style;
         self
     }
 }

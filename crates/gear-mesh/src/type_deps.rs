@@ -1,4 +1,4 @@
-use gear_mesh_core::{GearMeshType, TypeRef};
+use gear_mesh_core::{GearMeshType, TypeRef, is_builtin_type, is_internal_type};
 use std::collections::HashSet;
 
 /// Extract all custom type names referenced by a type
@@ -38,14 +38,7 @@ pub fn extract_type_dependencies(ty: &GearMeshType) -> HashSet<String> {
 }
 
 fn collect_type_refs(ty_ref: &TypeRef, deps: &mut HashSet<String>) {
-    // Check if this is a container type (Vec, Option, etc.)
-    let is_container = matches!(
-        ty_ref.name.as_str(),
-        "Vec" | "Option" | "Result" | "HashMap" | "HashSet" | "Box" | "Arc" | "Rc" | "Cow"
-    );
-
-    // If it's not a container and not a primitive, add it to dependencies
-    if !is_container && !is_primitive(&ty_ref.name) {
+    if !is_builtin_type(&ty_ref.name) && !is_internal_type(&ty_ref.name) {
         deps.insert(ty_ref.name.clone());
     }
 
@@ -55,26 +48,33 @@ fn collect_type_refs(ty_ref: &TypeRef, deps: &mut HashSet<String>) {
     }
 }
 
-fn is_primitive(type_name: &str) -> bool {
-    matches!(
-        type_name,
-        "String"
-            | "str"
-            | "bool"
-            | "char"
-            | "i8"
-            | "i16"
-            | "i32"
-            | "i64"
-            | "i128"
-            | "isize"
-            | "u8"
-            | "u16"
-            | "u32"
-            | "u64"
-            | "u128"
-            | "usize"
-            | "f32"
-            | "f64"
-    )
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_internal_types_are_not_reported_as_dependencies() {
+        let mut deps = HashSet::new();
+        collect_type_refs(
+            &TypeRef::with_generics("__array__", vec![TypeRef::new("String")]),
+            &mut deps,
+        );
+
+        assert!(deps.is_empty());
+    }
+
+    #[test]
+    fn test_standard_containers_only_report_custom_inner_types() {
+        let mut deps = HashSet::new();
+        collect_type_refs(
+            &TypeRef::with_generics(
+                "BTreeMap",
+                vec![TypeRef::new("String"), TypeRef::new("User")],
+            ),
+            &mut deps,
+        );
+
+        assert_eq!(deps.len(), 1);
+        assert!(deps.contains("User"));
+    }
 }

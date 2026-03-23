@@ -4,7 +4,7 @@
 
 use syn::{Attribute, Expr, Lit, Meta, Result};
 
-use gear_mesh_core::{TypeAttributes, ValidationRule};
+use gear_mesh_core::{RenameRule, SerdeTypeAttrs, TypeAttributes, ValidationRule};
 
 /// gear_mesh属性を解析
 pub fn parse_gear_mesh_attrs(attrs: &[Attribute]) -> Result<TypeAttributes> {
@@ -22,16 +22,26 @@ pub fn parse_gear_mesh_attrs(attrs: &[Attribute]) -> Result<TypeAttributes> {
                     let value: syn::LitStr = meta.input.parse()?;
                     if value.value() == "auto" {
                         result.bigint_auto = true;
+                    } else {
+                        return Err(meta.error(
+                            "invalid value for `bigint`\nhelp: use `#[gear_mesh(bigint = \"auto\")]`",
+                        ));
                     }
                 } else if meta.path.is_ident("output") && meta.input.peek(syn::Token![=]) {
                     let _ = meta.input.parse::<syn::Token![=]>()?;
                     let value: syn::LitStr = meta.input.parse()?;
                     result.output_path = Some(value.value());
+                } else {
+                    return Err(meta.error(
+                        "unsupported #[gear_mesh(...)] option\nhelp: supported options are `branded`, `validate`, `bigint = \"auto\"`, and `output = \"path\"`",
+                    ));
                 }
                 Ok(())
             })?;
         }
     }
+
+    result.serde = parse_serde_type_attrs(attrs)?;
 
     Ok(result)
 }
@@ -53,7 +63,12 @@ pub fn parse_validate_attrs(attrs: &[Attribute]) -> Result<Vec<ValidationRule>> 
                             match lit {
                                 syn::Lit::Int(i) => min = Some(i.base10_parse::<i64>()? as f64),
                                 syn::Lit::Float(f) => min = Some(f.base10_parse::<f64>()?),
-                                _ => {}
+                                _ => {
+                                    return Err(syn::Error::new_spanned(
+                                        lit,
+                                        "invalid `range(min = ...)` value\nhelp: use an integer or float literal, e.g. `min = 1`",
+                                    ))
+                                }
                             }
                         } else if inner.path.is_ident("max") {
                             let _ = inner.input.parse::<syn::Token![=]>()?;
@@ -61,8 +76,17 @@ pub fn parse_validate_attrs(attrs: &[Attribute]) -> Result<Vec<ValidationRule>> 
                             match lit {
                                 syn::Lit::Int(i) => max = Some(i.base10_parse::<i64>()? as f64),
                                 syn::Lit::Float(f) => max = Some(f.base10_parse::<f64>()?),
-                                _ => {}
+                                _ => {
+                                    return Err(syn::Error::new_spanned(
+                                        lit,
+                                        "invalid `range(max = ...)` value\nhelp: use an integer or float literal, e.g. `max = 10`",
+                                    ))
+                                }
                             }
+                        } else {
+                            return Err(inner.error(
+                                "unsupported `range(...)` option\nhelp: supported options are `min = ...` and `max = ...`",
+                            ));
                         }
                         Ok(())
                     })?;
@@ -79,6 +103,10 @@ pub fn parse_validate_attrs(attrs: &[Attribute]) -> Result<Vec<ValidationRule>> 
                             let _ = inner.input.parse::<syn::Token![=]>()?;
                             let lit: syn::LitInt = inner.input.parse()?;
                             max = Some(lit.base10_parse()?);
+                        } else {
+                            return Err(inner.error(
+                                "unsupported `length(...)` option\nhelp: supported options are `min = ...` and `max = ...`",
+                            ));
                         }
                         Ok(())
                     })?;
@@ -91,6 +119,10 @@ pub fn parse_validate_attrs(attrs: &[Attribute]) -> Result<Vec<ValidationRule>> 
                     let _ = meta.input.parse::<syn::Token![=]>()?;
                     let lit: syn::LitStr = meta.input.parse()?;
                     rules.push(ValidationRule::Pattern(lit.value()));
+                } else {
+                    return Err(meta.error(
+                        "unsupported #[validate(...)] rule\nhelp: supported rules are `range`, `length`, `email`, `url`, and `pattern = \"...\"`",
+                    ));
                 }
                 Ok(())
             })?;
@@ -125,6 +157,35 @@ pub fn parse_serde_rename(attrs: &[Attribute]) -> Option<String> {
     None
 }
 
+/// serde型属性を解析
+pub fn parse_serde_type_attrs(attrs: &[Attribute]) -> Result<SerdeTypeAttrs> {
+    let mut result = SerdeTypeAttrs::default();
+
+    for attr in attrs {
+        if attr.path().is_ident("serde") {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("rename_all") {
+                    let value = parse_string_value(&meta)?;
+                    result.rename_all = Some(value.parse::<RenameRule>().map_err(|_| {
+                        meta.error(
+                            "invalid `serde(rename_all = ...)` value\nhelp: supported values are `lowercase`, `UPPERCASE`, `camelCase`, `snake_case`, `PascalCase`, `SCREAMING_SNAKE_CASE`, `kebab-case`, and `SCREAMING-KEBAB-CASE`",
+                        )
+                    })?);
+                }
+                Ok(())
+            })?;
+        }
+    }
+
+    Ok(result)
+}
+
+fn parse_string_value(meta: &syn::meta::ParseNestedMeta<'_>) -> Result<String> {
+    let _ = meta.input.parse::<syn::Token![=]>()?;
+    let value: syn::LitStr = meta.input.parse()?;
+    Ok(value.value())
+}
+
 /// docコメントを抽出
 pub fn extract_doc_comments(attrs: &[Attribute]) -> String {
     attrs
@@ -141,4 +202,111 @@ pub fn extract_doc_comments(attrs: &[Attribute]) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use syn::parse_quote;
+
+    #[test]
+    fn test_invalid_gear_mesh_option_reports_supported_values() {
+        let input: syn::DeriveInput = parse_quote! {
+            #[derive(GearMesh)]
+            #[gear_mesh(unknown)]
+            struct User {
+                id: i32,
+            }
+        };
+
+        let err = parse_gear_mesh_attrs(&input.attrs).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("unsupported #[gear_mesh(...)] option"));
+        assert!(message.contains("supported options"));
+    }
+
+    #[test]
+    fn test_invalid_bigint_value_reports_fix() {
+        let input: syn::DeriveInput = parse_quote! {
+            #[derive(GearMesh)]
+            #[gear_mesh(bigint = "always")]
+            struct User {
+                id: i32,
+            }
+        };
+
+        let err = parse_gear_mesh_attrs(&input.attrs).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("invalid value for `bigint`"));
+        assert!(message.contains("bigint = \"auto\""));
+    }
+
+    #[test]
+    fn test_invalid_validate_rule_reports_supported_rules() {
+        let field: syn::Field = parse_quote! {
+            #[validate(custom = "nope")]
+            value: String
+        };
+
+        let err = parse_validate_attrs(&field.attrs).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("unsupported #[validate(...)] rule"));
+        assert!(message.contains("supported rules"));
+    }
+
+    #[test]
+    fn test_parse_serde_rename_all() {
+        let input: syn::DeriveInput = parse_quote! {
+            #[derive(GearMesh)]
+            #[serde(rename_all = "camelCase")]
+            struct User {
+                user_name: String,
+            }
+        };
+
+        let attrs = parse_gear_mesh_attrs(&input.attrs).unwrap();
+        assert_eq!(attrs.serde.rename_all, Some(RenameRule::CamelCase));
+    }
+
+    #[test]
+    fn test_invalid_serde_rename_all_reports_supported_values() {
+        let input: syn::DeriveInput = parse_quote! {
+            #[derive(GearMesh)]
+            #[serde(rename_all = "train-case")]
+            struct User {
+                user_name: String,
+            }
+        };
+
+        let err = parse_gear_mesh_attrs(&input.attrs).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("invalid `serde(rename_all = ...)` value"));
+        assert!(message.contains("supported values"));
+    }
+
+    #[test]
+    fn test_invalid_range_option_reports_supported_options() {
+        let field: syn::Field = parse_quote! {
+            #[validate(range(step = 1))]
+            value: i32
+        };
+
+        let err = parse_validate_attrs(&field.attrs).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("unsupported `range(...)` option"));
+        assert!(message.contains("supported options are `min = ...` and `max = ...`"));
+    }
+
+    #[test]
+    fn test_invalid_length_option_reports_supported_options() {
+        let field: syn::Field = parse_quote! {
+            #[validate(length(exact = 5))]
+            value: String
+        };
+
+        let err = parse_validate_attrs(&field.attrs).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("unsupported `length(...)` option"));
+        assert!(message.contains("supported options are `min = ...` and `max = ...`"));
+    }
 }

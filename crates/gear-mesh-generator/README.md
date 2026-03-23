@@ -19,7 +19,9 @@ This crate converts Rust type definitions (represented as `GearMeshType`) into T
 This crate is typically used through the main `gear-mesh` crate, but can be used directly:
 
 ```rust
-use gear_mesh_generator::{GeneratorConfig, TypeScriptGenerator};
+use gear_mesh_generator::{
+    GeneratorConfig, OptionStyle, ResultStyle, TypeScriptGenerator,
+};
 use gear_mesh_core::GearMeshType;
 
 let config = GeneratorConfig::new()
@@ -40,6 +42,8 @@ GeneratorConfig::new()
     .with_validation(true)    // Include validation rules
     .with_branded(true)       // Generate Branded Types
     .with_jsdoc(true)         // Include JSDoc comments
+    .with_option_style(OptionStyle::Nullable)
+    .with_result_style(ResultStyle::TaggedUnion)
 ```
 
 ## Generated Output

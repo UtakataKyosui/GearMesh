@@ -145,7 +145,7 @@ gear-mesh-generator (+ facade)
 | `String/&str` | `string` | |
 | `bool` | `boolean` | |
 | `()` | `void` | |
-| `Option<T>` | `T \| null` + `?` | Optional marker |
+| `Option<T>` | Configurable (`T \| null`, optional `T`, or both) | Controlled by `OptionStyle` |
 | `Vec<T>` | `T[]` | |
 | `HashMap<String, T>` | `Record<string, T>` | |
 | `(T, U)` | `[T, U]` | Tuple |

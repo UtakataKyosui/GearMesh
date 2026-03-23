@@ -1,11 +1,12 @@
 //! TypeScriptコード生成の主要ロジック
 
 use gear_mesh_core::{
-    EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, StructType, TypeKind,
-    TypeRef, VariantContent,
+    EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, RenameRule, StructType,
+    TypeAttributes, TypeKind, TypeRef, VariantContent, to_typescript_primitive,
 };
 
-use crate::GeneratorConfig;
+use crate::utils::{apply_rename_all, format_property_name, resolve_field_name};
+use crate::{GeneratorConfig, OptionStyle, ResultStyle};
 
 /// TypeScript生成器
 pub struct TypeScriptGenerator {
@@ -69,8 +70,8 @@ impl TypeScriptGenerator {
         }
 
         match &ty.kind {
-            TypeKind::Struct(s) => self.generate_struct(&ty.name, s, &ty.generics),
-            TypeKind::Enum(e) => self.generate_enum(&ty.name, e, &ty.generics),
+            TypeKind::Struct(s) => self.generate_struct(&ty.name, s, &ty.generics, &ty.attributes),
+            TypeKind::Enum(e) => self.generate_enum(&ty.name, e, &ty.generics, &ty.attributes),
             TypeKind::Newtype(n) => {
                 if ty.attributes.branded {
                     self.generate_branded_type(&ty.name, n);
@@ -91,6 +92,7 @@ impl TypeScriptGenerator {
         name: &str,
         struct_type: &StructType,
         generics: &[gear_mesh_core::GenericParam],
+        attrs: &TypeAttributes,
     ) {
         let generic_str = if generics.is_empty() {
             String::new()
@@ -109,14 +111,14 @@ impl TypeScriptGenerator {
             .push_str(&format!("export interface {}{} {{\n", name, generic_str));
 
         for field in &struct_type.fields {
-            self.generate_field(field);
+            self.generate_field(field, attrs.serde.rename_all);
         }
 
         self.output.push_str("}\n");
     }
 
     /// フィールドを生成
-    fn generate_field(&mut self, field: &FieldInfo) {
+    fn generate_field(&mut self, field: &FieldInfo, rename_all: Option<RenameRule>) {
         let indent = &self.config.indent;
 
         // フィールドのJSDoc
@@ -127,9 +129,13 @@ impl TypeScriptGenerator {
                 .push_str(&format!("{}{}\n", indent, docs.to_inline_jsdoc()));
         }
 
-        let field_name = field.serde_attrs.rename.as_ref().unwrap_or(&field.name);
-        let optional = if field.optional { "?" } else { "" };
-        let ts_type = self.type_ref_to_typescript(&field.ty);
+        let field_name = format_property_name(&resolve_field_name(field, rename_all));
+        let optional = if self.is_optional_field(field) {
+            "?"
+        } else {
+            ""
+        };
+        let ts_type = self.field_type_to_typescript(field);
 
         self.output.push_str(&format!(
             "{}{}{}: {};\n",
@@ -143,6 +149,7 @@ impl TypeScriptGenerator {
         name: &str,
         enum_type: &EnumType,
         generics: &[gear_mesh_core::GenericParam],
+        attrs: &TypeAttributes,
     ) {
         let generic_str = if generics.is_empty() {
             String::new()
@@ -161,7 +168,7 @@ impl TypeScriptGenerator {
         let variants: Vec<String> = enum_type
             .variants
             .iter()
-            .map(|v| self.generate_variant(name, v, &enum_type.representation))
+            .map(|v| self.generate_variant(name, v, &enum_type.representation, attrs))
             .collect();
 
         self.output.push_str(&format!(
@@ -178,24 +185,26 @@ impl TypeScriptGenerator {
         _enum_name: &str,
         variant: &gear_mesh_core::EnumVariant,
         repr: &EnumRepresentation,
+        attrs: &TypeAttributes,
     ) -> String {
+        let variant_name = apply_rename_all(&variant.name, attrs.serde.rename_all);
         match (&variant.content, repr) {
             (VariantContent::Unit, EnumRepresentation::External) => {
-                format!("\"{}\"", variant.name)
+                format!("\"{}\"", variant_name)
             }
             (VariantContent::Unit, EnumRepresentation::Internal { tag }) => {
-                format!("{{ {}: \"{}\" }}", tag, variant.name)
+                format!("{{ {}: \"{}\" }}", tag, variant_name)
             }
             (VariantContent::Tuple(types), EnumRepresentation::External) => {
                 if types.len() == 1 {
                     let inner = self.type_ref_to_typescript(&types[0]);
-                    format!("{{ \"{}\": {} }}", variant.name, inner)
+                    format!("{{ \"{}\": {} }}", variant_name, inner)
                 } else {
                     let inner: Vec<_> = types
                         .iter()
                         .map(|t| self.type_ref_to_typescript(t))
                         .collect();
-                    format!("{{ \"{}\": [{}] }}", variant.name, inner.join(", "))
+                    format!("{{ \"{}\": [{}] }}", variant_name, inner.join(", "))
                 }
             }
             (VariantContent::Struct(fields), EnumRepresentation::External) => {
@@ -203,12 +212,13 @@ impl TypeScriptGenerator {
                     .iter()
                     .map(|f| {
                         let ts_type = self.type_ref_to_typescript(&f.ty);
-                        format!("{}: {}", f.name, ts_type)
+                        let field_name = format_property_name(&resolve_field_name(f, None));
+                        format!("{}: {}", field_name, ts_type)
                     })
                     .collect();
                 format!(
                     "{{ \"{}\": {{ {} }} }}",
-                    variant.name,
+                    variant_name,
                     field_strs.join("; ")
                 )
             }
@@ -217,17 +227,18 @@ impl TypeScriptGenerator {
                     .iter()
                     .map(|f| {
                         let ts_type = self.type_ref_to_typescript(&f.ty);
-                        format!("{}: {}", f.name, ts_type)
+                        let field_name = format_property_name(&resolve_field_name(f, None));
+                        format!("{}: {}", field_name, ts_type)
                     })
                     .collect();
                 format!(
                     "{{ {}: \"{}\"; {} }}",
                     tag,
-                    variant.name,
+                    variant_name,
                     field_strs.join("; ")
                 )
             }
-            _ => format!("\"{}\"", variant.name),
+            _ => format!("\"{}\"", variant_name),
         }
     }
 
@@ -255,39 +266,34 @@ impl TypeScriptGenerator {
 
     /// TypeRefからTypeScript型文字列へ変換
     fn type_ref_to_typescript(&self, type_ref: &TypeRef) -> String {
-        match type_ref.name.as_str() {
-            // プリミティブ型
-            "i8" | "i16" | "i32" | "u8" | "u16" | "u32" | "f32" | "f64" => "number".to_string(),
-            "i64" | "i128" | "u64" | "u128" | "isize" | "usize" => {
-                if self.config.use_bigint {
-                    "bigint".to_string()
-                } else {
-                    "number".to_string()
-                }
-            }
-            "bool" => "boolean".to_string(),
-            "char" | "String" | "str" => "string".to_string(),
-            "()" => "null".to_string(),
+        if let Some(primitive) =
+            to_typescript_primitive(type_ref.name.as_str(), self.config.use_bigint)
+        {
+            return primitive.to_string();
+        }
 
-            // コレクション
+        match type_ref.name.as_str() {
             "Vec" | "__array__" | "__slice__" => {
                 if let Some(inner) = type_ref.generics.first() {
-                    format!("{}[]", self.type_ref_to_typescript(inner))
+                    format!(
+                        "{}[]",
+                        wrap_array_element_type(self.type_ref_to_typescript(inner))
+                    )
                 } else {
                     "unknown[]".to_string()
                 }
             }
             "Option" => {
                 if let Some(inner) = type_ref.generics.first() {
-                    format!("{} | null", self.type_ref_to_typescript(inner))
+                    self.wrap_option_type(self.type_ref_to_typescript(inner))
                 } else {
-                    "unknown | null".to_string()
+                    self.wrap_option_type("unknown".to_string())
                 }
             }
-            "Result" => {
-                // Resultは通常Either的な型になるが、シンプルにokの型を返す
-                if let Some(ok) = type_ref.generics.first() {
-                    self.type_ref_to_typescript(ok)
+            "Result" => self.result_to_typescript(type_ref),
+            "Box" | "Arc" | "Rc" | "Cow" => {
+                if let Some(inner) = type_ref.generics.last() {
+                    self.type_ref_to_typescript(inner)
                 } else {
                     "unknown".to_string()
                 }
@@ -341,6 +347,68 @@ impl TypeScriptGenerator {
                 }
             }
         }
+    }
+
+    fn wrap_option_type(&self, inner: String) -> String {
+        match self.config.option_style {
+            OptionStyle::Nullable => format!("{} | null", inner),
+            OptionStyle::Optional => format!("{} | undefined", inner),
+            OptionStyle::Both => format!("{} | null | undefined", inner),
+        }
+    }
+
+    fn is_optional_field(&self, field: &FieldInfo) -> bool {
+        if field.ty.name != "Option" || !field.optional {
+            return field.optional;
+        }
+
+        match self.config.option_style {
+            OptionStyle::Nullable => false,
+            OptionStyle::Optional | OptionStyle::Both => true,
+        }
+    }
+
+    fn field_type_to_typescript(&self, field: &FieldInfo) -> String {
+        if field.ty.name != "Option" || field.ty.generics.is_empty() {
+            return self.type_ref_to_typescript(&field.ty);
+        }
+
+        let inner = self.type_ref_to_typescript(&field.ty.generics[0]);
+        match self.config.option_style {
+            OptionStyle::Nullable => format!("{} | null", inner),
+            OptionStyle::Optional => inner,
+            OptionStyle::Both => format!("{} | null", inner),
+        }
+    }
+
+    fn result_to_typescript(&self, type_ref: &TypeRef) -> String {
+        let ok = type_ref
+            .generics
+            .first()
+            .map(|ty| self.type_ref_to_typescript(ty))
+            .unwrap_or_else(|| "unknown".to_string());
+        let err = type_ref
+            .generics
+            .get(1)
+            .map(|ty| self.type_ref_to_typescript(ty))
+            .unwrap_or_else(|| "unknown".to_string());
+
+        match self.config.result_style {
+            ResultStyle::OkOnly => ok,
+            ResultStyle::TaggedUnion => format!("{{ ok: {} }} | {{ err: {} }}", ok, err),
+            ResultStyle::SuccessError => format!(
+                "{{ success: true; data: {} }} | {{ success: false; error: {} }}",
+                ok, err
+            ),
+        }
+    }
+}
+
+fn wrap_array_element_type(inner: String) -> String {
+    if inner.contains('|') || inner.contains('&') {
+        format!("({inner})")
+    } else {
+        inner
     }
 }
 
@@ -408,6 +476,15 @@ mod tests {
         assert!(output.contains("export type UserId = Brand<number, \"UserId\">;"));
         assert!(
             output.contains("export const UserId = (value: number): UserId => value as UserId;")
+        );
+    }
+
+    #[test]
+    fn test_wrap_array_element_type_parenthesizes_unions() {
+        assert_eq!(wrap_array_element_type("string".to_string()), "string");
+        assert_eq!(
+            wrap_array_element_type("string | undefined".to_string()),
+            "(string | undefined)"
         );
     }
 }

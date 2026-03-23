@@ -1,45 +1,72 @@
-/// Checks if a type is a built-in Rust type that has special handling in the generator.
-///
-/// This is used to differentiate between standard library types (including primitives,
-/// collections, and smart pointers) and user-defined structs/enums which are expected
-/// to have a corresponding `...Schema` generated.
-pub fn is_builtin_type(type_name: &str) -> bool {
-    matches!(
-        type_name,
-        "String"
-            | "str"
-            | "bool"
-            | "char"
-            | "i8"
-            | "i16"
-            | "i32"
-            | "i64"
-            | "i128"
-            | "isize"
-            | "u8"
-            | "u16"
-            | "u32"
-            | "u64"
-            | "u128"
-            | "usize"
-            | "f32"
-            | "f64"
-            | "Vec"
-            | "Option"
-            | "Result"
-            | "HashMap"
-            | "HashSet"
-            | "Box"
-            | "Arc"
-            | "Rc"
-            | "Cow"
-    )
+pub use gear_mesh_core::{
+    is_bigint_type, is_builtin_type, is_internal_type, to_typescript_primitive,
+};
+
+use gear_mesh_core::{FieldInfo, RenameRule};
+
+pub fn format_property_name(name: &str) -> String {
+    if is_plain_javascript_identifier(name) {
+        name.to_string()
+    } else {
+        format!("{name:?}")
+    }
 }
 
-/// Determines if the given type name should be treated as a `bigint` in TypeScript.
-pub fn is_bigint_type(type_name: &str) -> bool {
-    matches!(
-        type_name,
-        "i64" | "i128" | "u64" | "u128" | "isize" | "usize"
-    )
+pub fn resolve_field_name(field: &FieldInfo, rename_all: Option<RenameRule>) -> String {
+    if let Some(rename) = &field.serde_attrs.rename {
+        rename.clone()
+    } else {
+        apply_rename_all(&field.name, rename_all)
+    }
+}
+
+pub fn apply_rename_all(name: &str, rename_all: Option<RenameRule>) -> String {
+    rename_all
+        .map(|rule| rule.apply(name))
+        .unwrap_or_else(|| name.to_string())
+}
+
+pub fn is_plain_javascript_identifier(name: &str) -> bool {
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+
+    if !(first.is_ascii_alphabetic() || first == '_' || first == '$') {
+        return false;
+    }
+
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gear_mesh_core::{SerdeFieldAttrs, TypeRef};
+
+    #[test]
+    fn property_names_quote_non_identifiers() {
+        assert_eq!(format_property_name("displayName"), "displayName");
+        assert_eq!(format_property_name("display-name"), "\"display-name\"");
+    }
+
+    #[test]
+    fn field_name_prefers_explicit_rename() {
+        let field = FieldInfo {
+            name: "display_name".to_string(),
+            ty: TypeRef::new("String"),
+            docs: None,
+            validations: vec![],
+            optional: false,
+            serde_attrs: SerdeFieldAttrs {
+                rename: Some("display-name".to_string()),
+                ..Default::default()
+            },
+        };
+
+        assert_eq!(
+            resolve_field_name(&field, Some(RenameRule::CamelCase)),
+            "display-name"
+        );
+    }
 }
