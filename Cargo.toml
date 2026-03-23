@@ -48,3 +48,4 @@ anyhow = "1.0"
 
 # Testing
 pretty_assertions = "1.4"
+strum = { version = "0.28", features = ["derive"] }

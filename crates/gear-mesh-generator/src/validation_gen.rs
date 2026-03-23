@@ -1,6 +1,7 @@
 use crate::{GeneratorConfig, OptionStyle, ResultStyle};
 use gear_mesh_core::{
-    FieldInfo, GearMeshType, TypeKind, is_bigint_type, is_builtin_type, is_internal_type,
+    FieldInfo, GearMeshType, RenameRule, TypeKind, is_bigint_type, is_builtin_type,
+    is_internal_type,
 };
 
 /// Generator for Zod validation schemas
@@ -21,9 +22,10 @@ impl ValidationGenerator {
 
                 for field in &s.fields {
                     let field_schema = self.field_to_zod(field);
-                    let field_name = format_property_name(
-                        field.serde_attrs.rename.as_deref().unwrap_or(&field.name),
-                    );
+                    let field_name = format_property_name(&resolve_field_name(
+                        field,
+                        ty.attributes.serde.rename_all,
+                    ));
                     schema.push_str(&format!("    {}: {},\n", field_name, field_schema));
                 }
 
@@ -251,6 +253,20 @@ fn format_property_name(name: &str) -> String {
     } else {
         format!("{name:?}")
     }
+}
+
+fn resolve_field_name(field: &FieldInfo, rename_all: Option<RenameRule>) -> String {
+    if let Some(rename) = &field.serde_attrs.rename {
+        rename.clone()
+    } else {
+        apply_rename_all(&field.name, rename_all)
+    }
+}
+
+fn apply_rename_all(name: &str, rename_all: Option<RenameRule>) -> String {
+    rename_all
+        .map(|rule| rule.apply(name))
+        .unwrap_or_else(|| name.to_string())
 }
 
 fn is_plain_javascript_identifier(name: &str) -> bool {

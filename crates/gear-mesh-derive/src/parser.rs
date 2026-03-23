@@ -162,6 +162,7 @@ fn parse_variant(variant: &syn::Variant) -> Result<EnumVariant> {
                     let ty = parse_type_ref(&f.ty)?;
                     let field_docs = extract_doc_comments(&f.attrs);
                     let validations = parse_validate_attrs(&f.attrs)?;
+                    let rename = parse_serde_rename(&f.attrs);
 
                     Ok(FieldInfo {
                         name: field_name,
@@ -173,7 +174,10 @@ fn parse_variant(variant: &syn::Variant) -> Result<EnumVariant> {
                         },
                         validations,
                         optional: is_option_type(&f.ty),
-                        serde_attrs: Default::default(),
+                        serde_attrs: SerdeFieldAttrs {
+                            rename,
+                            ..Default::default()
+                        },
                     })
                 })
                 .collect::<Result<Vec<_>>>()?;
@@ -261,6 +265,7 @@ fn is_option_type(ty: &Type) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gear_mesh_core::{RenameRule, TypeKind};
     use syn::parse_quote;
 
     #[test]
@@ -306,5 +311,30 @@ mod tests {
         let err = parse_type(&input).unwrap_err();
         let message = err.to_string();
         assert!(message.contains("invalid `range(min = ...)` value"));
+    }
+
+    #[test]
+    fn test_parse_type_preserves_serde_rename_all_and_variant_field_rename() {
+        let input: DeriveInput = parse_quote! {
+            #[derive(GearMesh)]
+            #[serde(rename_all = "camelCase")]
+            enum ApiResponse {
+                UserCreated {
+                    #[serde(rename = "user-id")]
+                    user_id: i32,
+                }
+            }
+        };
+
+        let ty = parse_type(&input).unwrap();
+        assert_eq!(ty.attributes.serde.rename_all, Some(RenameRule::CamelCase));
+
+        let TypeKind::Enum(enum_type) = ty.kind else {
+            panic!("expected enum type");
+        };
+        let VariantContent::Struct(fields) = &enum_type.variants[0].content else {
+            panic!("expected struct variant");
+        };
+        assert_eq!(fields[0].serde_attrs.rename.as_deref(), Some("user-id"));
     }
 }

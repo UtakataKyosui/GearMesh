@@ -37,7 +37,7 @@ use parser::parse_type;
 ///     name: String,
 /// }
 /// ```
-#[proc_macro_derive(GearMesh, attributes(gear_mesh, validate))]
+#[proc_macro_derive(GearMesh, attributes(gear_mesh, validate, serde))]
 pub fn derive_gear_mesh(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 

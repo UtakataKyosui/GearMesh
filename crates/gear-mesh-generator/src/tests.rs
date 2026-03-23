@@ -4,7 +4,8 @@ use std::{fs, path::PathBuf};
 
 use gear_mesh_core::{
     DocComment, EnumRepresentation, EnumType, EnumVariant, FieldInfo, GearMeshType, NewtypeType,
-    StructType, TypeAttributes, TypeKind, TypeRef, ValidationRule, VariantContent,
+    RenameRule, SerdeTypeAttrs, StructType, TypeAttributes, TypeKind, TypeRef, ValidationRule,
+    VariantContent,
 };
 use pretty_assertions::assert_eq;
 
@@ -710,6 +711,120 @@ fn test_zod_generation_respects_serde_rename_with_quoted_key() {
 
     assert!(output.contains("\"display-name\": string | null;"));
     assert!(output.contains("\"display-name\": z.string().nullable()"));
+}
+
+#[test]
+fn test_typescript_generation_respects_serde_rename_all_on_struct_fields() {
+    let ty = GearMeshType {
+        name: "RenamedFields".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![FieldInfo {
+                name: "display_name".to_string(),
+                ty: TypeRef::new("String"),
+                docs: None,
+                validations: vec![],
+                optional: false,
+                serde_attrs: Default::default(),
+            }],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes {
+            serde: SerdeTypeAttrs {
+                rename_all: Some(RenameRule::CamelCase),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new());
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("displayName: string;"));
+}
+
+#[test]
+fn test_zod_generation_respects_serde_rename_all_with_field_override() {
+    let ty = GearMeshType {
+        name: "RenamedFields".to_string(),
+        kind: TypeKind::Struct(StructType {
+            fields: vec![
+                FieldInfo {
+                    name: "display_name".to_string(),
+                    ty: TypeRef::new("String"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: Default::default(),
+                },
+                FieldInfo {
+                    name: "account_id".to_string(),
+                    ty: TypeRef::new("i32"),
+                    docs: None,
+                    validations: vec![],
+                    optional: false,
+                    serde_attrs: gear_mesh_core::SerdeFieldAttrs {
+                        rename: Some("account-id".to_string()),
+                        ..Default::default()
+                    },
+                },
+            ],
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes {
+            serde: SerdeTypeAttrs {
+                rename_all: Some(RenameRule::CamelCase),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new().with_zod(true));
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("displayName: string;"));
+    assert!(output.contains("displayName: z.string()"));
+    assert!(output.contains("\"account-id\": number;"));
+    assert!(output.contains("\"account-id\": z.number()"));
+}
+
+#[test]
+fn test_typescript_generation_respects_serde_rename_all_on_enum_variants() {
+    let ty = GearMeshType {
+        name: "ApiResult".to_string(),
+        kind: TypeKind::Enum(EnumType {
+            variants: vec![
+                EnumVariant {
+                    name: "NotFound".to_string(),
+                    content: VariantContent::Unit,
+                    docs: None,
+                },
+                EnumVariant {
+                    name: "ServerError".to_string(),
+                    content: VariantContent::Unit,
+                    docs: None,
+                },
+            ],
+            representation: EnumRepresentation::External,
+        }),
+        docs: None,
+        generics: vec![],
+        attributes: TypeAttributes {
+            serde: SerdeTypeAttrs {
+                rename_all: Some(RenameRule::SnakeCase),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    };
+
+    let mut generator = TypeScriptGenerator::new(GeneratorConfig::new());
+    let output = generator.generate(&[ty]);
+
+    assert!(output.contains("\"not_found\" | \"server_error\""));
 }
 
 #[test]

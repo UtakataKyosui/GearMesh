@@ -1,8 +1,8 @@
 //! TypeScriptコード生成の主要ロジック
 
 use gear_mesh_core::{
-    EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, StructType, TypeKind,
-    TypeRef, VariantContent, to_typescript_primitive,
+    EnumRepresentation, EnumType, FieldInfo, GearMeshType, NewtypeType, RenameRule, StructType,
+    TypeAttributes, TypeKind, TypeRef, VariantContent, to_typescript_primitive,
 };
 
 use crate::{GeneratorConfig, OptionStyle, ResultStyle};
@@ -69,8 +69,8 @@ impl TypeScriptGenerator {
         }
 
         match &ty.kind {
-            TypeKind::Struct(s) => self.generate_struct(&ty.name, s, &ty.generics),
-            TypeKind::Enum(e) => self.generate_enum(&ty.name, e, &ty.generics),
+            TypeKind::Struct(s) => self.generate_struct(&ty.name, s, &ty.generics, &ty.attributes),
+            TypeKind::Enum(e) => self.generate_enum(&ty.name, e, &ty.generics, &ty.attributes),
             TypeKind::Newtype(n) => {
                 if ty.attributes.branded {
                     self.generate_branded_type(&ty.name, n);
@@ -91,6 +91,7 @@ impl TypeScriptGenerator {
         name: &str,
         struct_type: &StructType,
         generics: &[gear_mesh_core::GenericParam],
+        attrs: &TypeAttributes,
     ) {
         let generic_str = if generics.is_empty() {
             String::new()
@@ -109,14 +110,14 @@ impl TypeScriptGenerator {
             .push_str(&format!("export interface {}{} {{\n", name, generic_str));
 
         for field in &struct_type.fields {
-            self.generate_field(field);
+            self.generate_field(field, attrs.serde.rename_all);
         }
 
         self.output.push_str("}\n");
     }
 
     /// フィールドを生成
-    fn generate_field(&mut self, field: &FieldInfo) {
+    fn generate_field(&mut self, field: &FieldInfo, rename_all: Option<RenameRule>) {
         let indent = &self.config.indent;
 
         // フィールドのJSDoc
@@ -127,8 +128,7 @@ impl TypeScriptGenerator {
                 .push_str(&format!("{}{}\n", indent, docs.to_inline_jsdoc()));
         }
 
-        let field_name =
-            format_property_name(field.serde_attrs.rename.as_deref().unwrap_or(&field.name));
+        let field_name = format_property_name(&resolve_field_name(field, rename_all));
         let optional = if self.is_optional_field(field) {
             "?"
         } else {
@@ -148,6 +148,7 @@ impl TypeScriptGenerator {
         name: &str,
         enum_type: &EnumType,
         generics: &[gear_mesh_core::GenericParam],
+        attrs: &TypeAttributes,
     ) {
         let generic_str = if generics.is_empty() {
             String::new()
@@ -166,7 +167,7 @@ impl TypeScriptGenerator {
         let variants: Vec<String> = enum_type
             .variants
             .iter()
-            .map(|v| self.generate_variant(name, v, &enum_type.representation))
+            .map(|v| self.generate_variant(name, v, &enum_type.representation, attrs))
             .collect();
 
         self.output.push_str(&format!(
@@ -183,24 +184,26 @@ impl TypeScriptGenerator {
         _enum_name: &str,
         variant: &gear_mesh_core::EnumVariant,
         repr: &EnumRepresentation,
+        attrs: &TypeAttributes,
     ) -> String {
+        let variant_name = apply_rename_all(&variant.name, attrs.serde.rename_all);
         match (&variant.content, repr) {
             (VariantContent::Unit, EnumRepresentation::External) => {
-                format!("\"{}\"", variant.name)
+                format!("\"{}\"", variant_name)
             }
             (VariantContent::Unit, EnumRepresentation::Internal { tag }) => {
-                format!("{{ {}: \"{}\" }}", tag, variant.name)
+                format!("{{ {}: \"{}\" }}", tag, variant_name)
             }
             (VariantContent::Tuple(types), EnumRepresentation::External) => {
                 if types.len() == 1 {
                     let inner = self.type_ref_to_typescript(&types[0]);
-                    format!("{{ \"{}\": {} }}", variant.name, inner)
+                    format!("{{ \"{}\": {} }}", variant_name, inner)
                 } else {
                     let inner: Vec<_> = types
                         .iter()
                         .map(|t| self.type_ref_to_typescript(t))
                         .collect();
-                    format!("{{ \"{}\": [{}] }}", variant.name, inner.join(", "))
+                    format!("{{ \"{}\": [{}] }}", variant_name, inner.join(", "))
                 }
             }
             (VariantContent::Struct(fields), EnumRepresentation::External) => {
@@ -208,12 +211,13 @@ impl TypeScriptGenerator {
                     .iter()
                     .map(|f| {
                         let ts_type = self.type_ref_to_typescript(&f.ty);
-                        format!("{}: {}", f.name, ts_type)
+                        let field_name = format_property_name(&resolve_field_name(f, None));
+                        format!("{}: {}", field_name, ts_type)
                     })
                     .collect();
                 format!(
                     "{{ \"{}\": {{ {} }} }}",
-                    variant.name,
+                    variant_name,
                     field_strs.join("; ")
                 )
             }
@@ -222,17 +226,18 @@ impl TypeScriptGenerator {
                     .iter()
                     .map(|f| {
                         let ts_type = self.type_ref_to_typescript(&f.ty);
-                        format!("{}: {}", f.name, ts_type)
+                        let field_name = format_property_name(&resolve_field_name(f, None));
+                        format!("{}: {}", field_name, ts_type)
                     })
                     .collect();
                 format!(
                     "{{ {}: \"{}\"; {} }}",
                     tag,
-                    variant.name,
+                    variant_name,
                     field_strs.join("; ")
                 )
             }
-            _ => format!("\"{}\"", variant.name),
+            _ => format!("\"{}\"", variant_name),
         }
     }
 
@@ -401,6 +406,20 @@ fn format_property_name(name: &str) -> String {
     } else {
         format!("{name:?}")
     }
+}
+
+fn resolve_field_name(field: &FieldInfo, rename_all: Option<RenameRule>) -> String {
+    if let Some(rename) = &field.serde_attrs.rename {
+        rename.clone()
+    } else {
+        apply_rename_all(&field.name, rename_all)
+    }
+}
+
+fn apply_rename_all(name: &str, rename_all: Option<RenameRule>) -> String {
+    rename_all
+        .map(|rule| rule.apply(name))
+        .unwrap_or_else(|| name.to_string())
 }
 
 fn is_plain_typescript_identifier(name: &str) -> bool {

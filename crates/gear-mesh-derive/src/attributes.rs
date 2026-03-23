@@ -4,7 +4,7 @@
 
 use syn::{Attribute, Expr, Lit, Meta, Result};
 
-use gear_mesh_core::{TypeAttributes, ValidationRule};
+use gear_mesh_core::{RenameRule, SerdeTypeAttrs, TypeAttributes, ValidationRule};
 
 /// gear_mesh属性を解析
 pub fn parse_gear_mesh_attrs(attrs: &[Attribute]) -> Result<TypeAttributes> {
@@ -40,6 +40,8 @@ pub fn parse_gear_mesh_attrs(attrs: &[Attribute]) -> Result<TypeAttributes> {
             })?;
         }
     }
+
+    result.serde = parse_serde_type_attrs(attrs)?;
 
     Ok(result)
 }
@@ -155,6 +157,35 @@ pub fn parse_serde_rename(attrs: &[Attribute]) -> Option<String> {
     None
 }
 
+/// serde型属性を解析
+pub fn parse_serde_type_attrs(attrs: &[Attribute]) -> Result<SerdeTypeAttrs> {
+    let mut result = SerdeTypeAttrs::default();
+
+    for attr in attrs {
+        if attr.path().is_ident("serde") {
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("rename_all") {
+                    let value = parse_string_value(&meta)?;
+                    result.rename_all = Some(value.parse::<RenameRule>().map_err(|_| {
+                        meta.error(
+                            "invalid `serde(rename_all = ...)` value\nhelp: supported values are `lowercase`, `UPPERCASE`, `camelCase`, `snake_case`, `PascalCase`, `SCREAMING_SNAKE_CASE`, `kebab-case`, and `SCREAMING-KEBAB-CASE`",
+                        )
+                    })?);
+                }
+                Ok(())
+            })?;
+        }
+    }
+
+    Ok(result)
+}
+
+fn parse_string_value(meta: &syn::meta::ParseNestedMeta<'_>) -> Result<String> {
+    let _ = meta.input.parse::<syn::Token![=]>()?;
+    let value: syn::LitStr = meta.input.parse()?;
+    Ok(value.value())
+}
+
 /// docコメントを抽出
 pub fn extract_doc_comments(attrs: &[Attribute]) -> String {
     attrs
@@ -221,6 +252,36 @@ mod tests {
         let message = err.to_string();
         assert!(message.contains("unsupported #[validate(...)] rule"));
         assert!(message.contains("supported rules"));
+    }
+
+    #[test]
+    fn test_parse_serde_rename_all() {
+        let input: syn::DeriveInput = parse_quote! {
+            #[derive(GearMesh)]
+            #[serde(rename_all = "camelCase")]
+            struct User {
+                user_name: String,
+            }
+        };
+
+        let attrs = parse_gear_mesh_attrs(&input.attrs).unwrap();
+        assert_eq!(attrs.serde.rename_all, Some(RenameRule::CamelCase));
+    }
+
+    #[test]
+    fn test_invalid_serde_rename_all_reports_supported_values() {
+        let input: syn::DeriveInput = parse_quote! {
+            #[derive(GearMesh)]
+            #[serde(rename_all = "train-case")]
+            struct User {
+                user_name: String,
+            }
+        };
+
+        let err = parse_gear_mesh_attrs(&input.attrs).unwrap_err();
+        let message = err.to_string();
+        assert!(message.contains("invalid `serde(rename_all = ...)` value"));
+        assert!(message.contains("supported values"));
     }
 
     #[test]
