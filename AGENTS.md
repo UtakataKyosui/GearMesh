@@ -20,7 +20,7 @@
 
 - Follow `CONTRIBUTING.md` for Rust/Node setup and `npm ci --ignore-scripts`. Keep the root `package-lock.json` in sync with development dependencies. Do not install tooling implicitly from test commands.
 - While editing, run `cargo test -p <affected-crate> --all-features` or a named test. For derive/output changes, also run `npm run test:codegen`.
-- Before handing off code changes, run `npm test`: formatting, Clippy, workspace tests (including Rust snapshots), real derive generation, TypeScript consumer checking and output comparison. `moon run :verify` is an optional wrapper after dependency installation.
+- Before handing off code changes, run `npm test`: formatting, a default-feature build check, Clippy, workspace tests (including Rust snapshots), real derive generation, TypeScript consumer checking and output comparison. `moon run :verify` is an optional wrapper after dependency installation.
 - Docker is optional; `bash tests/e2e/run-docker-test.sh` runs the standard checks in a container. Aeneas translation and security/dependency audits are separate CI checks; the standard command does not replace them.
 - Report checks actually run and any failures or unavailable tooling. Do not weaken checks to hide existing failures.
 
