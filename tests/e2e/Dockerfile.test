@@ -1,29 +1,14 @@
-FROM rust:latest
+FROM node:22.12.0-bookworm-slim AS node
+FROM rust:1.90.0-slim-bookworm
 
-# 必要なツールをインストール
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && npm install --global npm@10.9.0
 
-# Node.jsをインストール（TypeScriptの検証用）
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && npm install -g typescript
-
-# 作業ディレクトリを作成
-WORKDIR /workspace
-
-# gear-meshをコピー
-COPY . /workspace/gear-mesh
-
-# スクリプトに実行権限を付与
-RUN chmod +x /workspace/gear-mesh/*.sh
-
-# サンプルプロジェクトのディレクトリを作成
-RUN mkdir -p /workspace/example-project
-
-WORKDIR /workspace/example-project
-
-CMD ["/bin/bash"]
+WORKDIR /workspace/gear-mesh
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts --no-audit --no-fund
+COPY . .
+RUN rustup component add rustfmt clippy
+CMD ["npm", "test"]

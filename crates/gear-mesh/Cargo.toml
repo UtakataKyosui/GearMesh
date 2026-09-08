@@ -20,6 +20,10 @@ name = "gear-mesh"
 path = "src/bin/gear-mesh.rs"
 required-features = ["cli"]
 
+[[example]]
+name = "codegen-fixture"
+path = "examples/codegen_fixture.rs"
+
 [dependencies]
 # Re-export all functionality from generator
 gear-mesh-generator = { workspace = true }

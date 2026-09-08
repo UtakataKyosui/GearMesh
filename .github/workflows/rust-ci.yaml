@@ -9,6 +9,18 @@ on:
       - 'tests/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
+      - 'AGENTS.md'
+      - '.agents/skills/**'
+      - 'CONTRIBUTING.md'
+      - 'docs/TESTING.md'
+      - '.prototools'
+      - '.moon/**'
+      - 'moon.yml'
+      - '.dockerignore'
       - '.github/workflows/rust-ci.yaml'
   pull_request:
     branches: [ main, develop ]
@@ -18,6 +30,18 @@ on:
       - 'tests/**'
       - 'Cargo.toml'
       - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
+      - 'AGENTS.md'
+      - '.agents/skills/**'
+      - 'CONTRIBUTING.md'
+      - 'docs/TESTING.md'
+      - '.prototools'
+      - '.moon/**'
+      - 'moon.yml'
+      - '.dockerignore'
       - '.github/workflows/rust-ci.yaml'
 
 concurrency:
@@ -82,23 +106,46 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
 
-  # Integration tests (runs once after crate checks)
+  # Same standard verification entrypoint used locally, including generated TS.
   integration:
-    name: Integration Tests
+    name: Standard Verification
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: "1.90"
+          toolchain: "1.90.0"
+          components: rustfmt, clippy
           profile: minimal
           cache-shared-key: rust-ci-1.90
           cache-key: integration
           cache-workspace-crates: true
       
-      - name: Run all tests
-        run: cargo test --workspace --all-features
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: npm
+
+      - name: Install pinned npm version
+        run: npm install --global npm@10.9.0
+
+      - name: Install development dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run standard verification
+        run: npm test
+
+  # Exercise the optional local Docker path on a clean Linux runner too.
+  docker:
+    name: Docker Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run standard verification in Docker
+        run: bash tests/e2e/run-docker-test.sh
 
   # Security audit
   security:

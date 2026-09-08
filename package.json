@@ -8,7 +8,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node scripts/verify.mjs",
+    "test:codegen": "node scripts/check-codegen.mjs",
     "prepare": "husky"
   },
   "keywords": [
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@commitlint/cli": "^20.2.0",
     "@commitlint/config-conventional": "^20.2.0",
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "typescript": "5.9.3"
   }
 }

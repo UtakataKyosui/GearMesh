@@ -282,19 +282,23 @@ gear-mesh has comprehensive test coverage updated regularly.
 
 - **Unit tests** covering core logic, generator, and derive macros.
 - **Integration tests** validation the full pipeline from Rust types to TypeScript output.
-- **E2E tests** ensuring compatibility with real TypeScript projects using Docker.
+- **E2E tests** generating TypeScript from a real Rust derive fixture and checking a TypeScript consumer. Docker is optional.
 
 Run all tests:
 
 ```bash
-cargo test --workspace
+npm ci --ignore-scripts
+npm test
 ```
 
 Or using [moonrepo](https://moonrepo.dev/):
 
 ```bash
-moon run :test
+moon run :verify
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for tool versions and
+[docs/TESTING.md](docs/TESTING.md) for focused checks and snapshot updates.
 
 ## License
 

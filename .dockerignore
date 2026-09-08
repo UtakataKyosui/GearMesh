@@ -1,0 +1,7 @@
+.git
+**/target
+**/node_modules
+tests/e2e/.generated-*
+.moon/cache
+.gear-mesh-cache
+**/.DS_Store

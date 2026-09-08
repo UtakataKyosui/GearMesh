@@ -11,13 +11,16 @@ GearMesh/
 ├── crates/
 │   ├── gear-mesh-core          # Core types and IR
 │   ├── gear-mesh-derive        # Proc-macro
-│   └── gear-mesh-generator     # Generator + Facade
+│   ├── gear-mesh-generator     # Generator and configuration
+│   └── gear-mesh               # Public facade and output orchestration
 ```
 
 ### Dependency Graph
 
 ```
-gear-mesh-generator (+ facade)
+gear-mesh (public facade, collection and output)
+    ↓
+gear-mesh-generator
     ↓
     ├─→ gear-mesh-core
     └─→ gear-mesh-derive
@@ -28,6 +31,14 @@ gear-mesh-generator (+ facade)
 ---
 
 ## Crate Responsibilities
+
+### gear-mesh
+**Public facade and output orchestration**
+
+- Re-exports the derive macros, IR and generator API
+- Collects registered types and state slots through inventory
+- Writes generated modules, manages output caching and compares migrations
+- Provides the optional CLI
 
 ### gear-mesh-core
 **Core types and intermediate representation**

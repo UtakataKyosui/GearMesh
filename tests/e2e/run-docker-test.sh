@@ -1,11 +1,5 @@
-#!/bin/bash
-# Docker E2Eテスト実行スクリプト
-
-set -e
-
-echo "Building Docker image for gear-mesh E2E test..."
-docker build -f Dockerfile.test -t gear-mesh-test .
-
-echo ""
-echo "Running E2E tests in Docker container..."
-docker run --rm gear-mesh-test /workspace/gear-mesh/test-e2e.sh
+#!/usr/bin/env bash
+set -euo pipefail
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+docker build -f "$repo_root/tests/e2e/Dockerfile.test" -t gear-mesh-test "$repo_root"
+docker run --rm gear-mesh-test

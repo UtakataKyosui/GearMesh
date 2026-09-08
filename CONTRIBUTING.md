@@ -6,27 +6,48 @@ Thank you for your interest in contributing to gear-mesh! This document provides
 
 ### Prerequisites
 
-- Rust 1.90 or later
-- Node.js 18+ and npm (for TypeScript validation)
-- Docker (optional, for E2E tests)
+- Rust 1.90.0 with `rustfmt` and `clippy` (see `rust-toolchain.toml`)
+- Node.js 22.12.0 and npm 10.9.0 (see `.prototools`; also used by CI)
+- Docker (optional, to repeat the standard checks in a Linux container)
 
 ### Getting Started
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/gear-mesh.git
+git clone https://github.com/UtakataKyosui/GearMesh.git gear-mesh
 cd gear-mesh
 ```
 
-2. Build the project:
+2. Install the Rust toolchain and JavaScript development dependencies. Put the
+   Node.js/npm versions above on `PATH` using your existing version manager.
+   If using proto, the versions are in `.prototools`; moon is optional.
+
 ```bash
-cargo build --workspace
+rustup toolchain install 1.90.0 --profile minimal --component rustfmt --component clippy
+npm ci --ignore-scripts
 ```
 
-3. Run tests:
+The root `package-lock.json` pins the dependency tree, including TypeScript
+5.9.3. `--ignore-scripts` avoids configuring Git hooks as a side effect of
+verification setup. Run `npm run prepare` separately if you want Husky hooks.
+Test commands use installed tools and do not install npm packages automatically.
+
+3. Run standard verification:
+
 ```bash
-cargo test --workspace
+npm test
 ```
+
+This checks formatting, Clippy, all-feature Rust tests and snapshots, then
+generates TypeScript from a real derive fixture, type-checks its consumer and
+compares the generated output with the reviewed expectation. Docker is not
+required. See [docs/TESTING.md](docs/TESTING.md) for focused checks, snapshot
+updates, coverage boundaries and known limitations.
+
+Codex reads the repository's [AGENTS.md](AGENTS.md). For a type-support task,
+start a new session in this repository and invoke `$gearmesh-type-support` to
+use `.agents/skills/gearmesh-type-support/SKILL.md`. No personal Codex config,
+MCP server or API credential is required for this repository workflow.
 
 ## Development Workflow
 
@@ -47,18 +68,21 @@ git checkout -b feature/your-feature-name
 Before submitting a PR, ensure all tests pass:
 
 ```bash
-# Unit and integration tests
-cargo test --workspace
+# Standard local and CI checks
+npm test
 
-# E2E tests (optional but recommended)
-./tests/e2e/run-docker-test.sh
+# Focused derive -> TypeScript check
+npm run test:codegen
+
+# Same standard checks in Linux (optional; requires Docker)
+bash tests/e2e/run-docker-test.sh
 ```
 
 ### 4. Format Code
 
 ```bash
 cargo fmt --all
-cargo clippy --all-targets --all-features
+cargo clippy --workspace --all-targets --all-features -- -D warnings
 ```
 
 ### 5. Submit Pull Request
@@ -197,4 +221,3 @@ Project maintainers have the right and responsibility to remove, edit, or reject
 ### Attribution
 
 This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.0.
-
