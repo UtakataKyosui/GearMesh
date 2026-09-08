@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 mod branded;
 mod module_organizer;
+mod state_gen;
 mod typescript;
 pub mod utils;
 mod validation_gen;
@@ -18,6 +19,7 @@ mod tests;
 
 pub use branded::BrandedTypeGenerator;
 pub use module_organizer::{ModuleOrganizer, ModuleStrategy};
+pub use state_gen::StateGenerator;
 pub use typescript::TypeScriptGenerator;
 pub use validation_gen::ValidationGenerator;
 
@@ -27,12 +29,12 @@ pub use validation_gen::ValidationGenerator;
 
 pub use gear_mesh_core::{
     DocComment, EnumRepresentation, EnumType, EnumVariant, FieldInfo, GearMeshType, GenericParam,
-    NewtypeType, PrimitiveType, SerdeFieldAttrs, StructType, TypeAttributes, TypeKind, TypeRef,
-    TypeTransformer, ValidationRule, VariantContent,
+    NewtypeType, PrimitiveType, Revision, SerdeFieldAttrs, SlotAccess, Stamped, StateSlot,
+    StructType, TypeAttributes, TypeKind, TypeRef, TypeTransformer, ValidationRule, VariantContent,
 };
 
-// Re-export derive macro
-pub use gear_mesh_derive::GearMesh;
+// Re-export derive macros
+pub use gear_mesh_derive::{GearMesh, GearMeshState};
 
 /// Trait for types that can be exported to TypeScript
 ///
@@ -43,6 +45,17 @@ pub trait GearMeshExport {
 
     /// Get the name of this type
     fn type_name() -> &'static str;
+}
+
+/// Trait for state containers that declare state slots
+///
+/// This trait is automatically implemented by the `#[derive(GearMeshState)]` macro.
+pub trait GearMeshStateExport {
+    /// Get the state slots declared by this container
+    fn gear_mesh_state_slots() -> Vec<StateSlot>;
+
+    /// Get the name of this state container
+    fn state_container_name() -> &'static str;
 }
 
 // ============================================================================
@@ -224,6 +237,11 @@ impl GeneratorConfig {
 
     pub fn with_cache_dir(mut self, cache_dir: impl Into<PathBuf>) -> Self {
         self.cache_dir = cache_dir.into();
+        self
+    }
+
+    pub fn with_indent(mut self, indent: impl Into<String>) -> Self {
+        self.indent = indent.into();
         self
     }
 }

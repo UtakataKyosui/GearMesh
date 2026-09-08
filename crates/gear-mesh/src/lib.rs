@@ -92,6 +92,12 @@ pub use inventory_collect::{TypeInfo, generate_types, generate_types_to_dir};
 pub use inventory_collect::{generate_types_to_dir_with_config, generate_with_config};
 pub use migration::{MigrationReport, diff_typescript, parse_typescript_snapshot};
 
+// Automatic state slot collection
+mod state_collect;
+pub use state_collect::{
+    StateSlotInfo, collect_registered_slots, generate_state, generate_state_with_config,
+};
+
 // Output path registry for automatic generation
 mod output_registry;
 mod type_deps;

@@ -9,8 +9,10 @@ use syn::{DeriveInput, parse_macro_input};
 mod attributes;
 mod error;
 mod parser;
+mod state;
 
 use parser::parse_type;
+use state::parse_state_container;
 
 /// GearMesh derive macro
 ///
@@ -97,4 +99,74 @@ pub fn derive_gear_mesh(input: TokenStream) -> TokenStream {
         }
         Err(err) => TokenStream::from(err.to_compile_error()),
     }
+}
+
+/// GearMeshState derive macro
+///
+/// 状態コンテナのフィールドを状態スロットとして宣言します。
+/// スロットの定義単位は型ではなく、キーで識別されるスロットそのものです。
+///
+/// # 属性
+///
+/// - `#[state]`: フィールド名をキーにした読み取り専用スロット
+/// - `#[state(key = "...")]`: キーを明示する
+/// - `#[state(get = "...")]`: 既存の読み取りコマンド名を採用する
+/// - `#[state(event = "...")]`: 既存の変更イベント名を採用する
+/// - `#[state(readonly)]`: 読み取り専用であることを明示する
+///
+/// `get` と `event` を省略した場合、名前はキーから導出されます。
+///
+/// # Example
+///
+/// ```ignore
+/// use gear_mesh::GearMeshState;
+///
+/// #[derive(GearMeshState)]
+/// struct AppState {
+///     /// ユーザーが選択したテーマ
+///     #[state]
+///     theme: Theme,
+/// }
+/// ```
+#[proc_macro_derive(GearMeshState, attributes(state))]
+pub fn derive_gear_mesh_state(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let slots = match parse_state_container(&input) {
+        Ok(slots) => slots,
+        Err(err) => return TokenStream::from(err.to_compile_error()),
+    };
+
+    let name = &input.ident;
+    let slots_json = match serde_json::to_string(&slots) {
+        Ok(json) => json,
+        Err(err) => {
+            let err = syn::Error::new_spanned(
+                name,
+                format!("failed to serialize state slots for derive output: {err}"),
+            );
+            return TokenStream::from(err.to_compile_error());
+        }
+    };
+
+    TokenStream::from(quote! {
+        impl ::gear_mesh::GearMeshStateExport for #name {
+            fn gear_mesh_state_slots() -> ::std::vec::Vec<::gear_mesh::StateSlot> {
+                let json = #slots_json;
+                ::serde_json::from_str(json).expect("Failed to deserialize state slots")
+            }
+
+            fn state_container_name() -> &'static str {
+                stringify!(#name)
+            }
+        }
+
+        // Register the slots with inventory for automatic collection
+        ::gear_mesh::inventory::submit! {
+            ::gear_mesh::StateSlotInfo {
+                get_slots: || <#name as ::gear_mesh::GearMeshStateExport>::gear_mesh_state_slots(),
+                container_name: stringify!(#name),
+            }
+        }
+    })
 }

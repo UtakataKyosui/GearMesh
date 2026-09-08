@@ -197,7 +197,7 @@ fn parse_variant(variant: &syn::Variant) -> Result<EnumVariant> {
 }
 
 /// syn::TypeからTypeRefへ変換
-fn parse_type_ref(ty: &Type) -> Result<TypeRef> {
+pub(crate) fn parse_type_ref(ty: &Type) -> Result<TypeRef> {
     match ty {
         Type::Path(path) => {
             let segments: Vec<_> = path.path.segments.iter().collect();
