@@ -64,7 +64,22 @@ tasks:
       cache: true
       runInCI: true
 
-  # Run all tests (no deps to avoid tag conflicts)
+  # Standard verification, shared with local npm test and CI.
+  verify:
+    command: 'npm test'
+    inputs:
+      - 'scripts/**/*'
+      - 'tests/e2e/**/*'
+      - 'crates/**/*'
+      - 'Cargo.toml'
+      - 'rust-toolchain.toml'
+      - 'package.json'
+      - 'package-lock.json'
+    options:
+      cache: false
+      runInCI: true
+
+  # Rust-only tests; use verify for Rust + generated TypeScript.
   test-all:
     command: 'cargo test --workspace'
     inputs:
@@ -87,4 +102,3 @@ tasks:
     options:
       cache: true
       runInCI: true
-

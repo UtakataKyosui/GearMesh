@@ -24,7 +24,7 @@ node:
 # Rust configuration
 rust:
   # Version managed by proto
-  version: '1.83.0'
+  version: '1.90.0'
   
   # Sync toolchain config
   syncToolchainConfig: true
@@ -48,4 +48,3 @@ typescript:
   
   # Sync project references to paths
   syncProjectReferencesToPaths: true
-
