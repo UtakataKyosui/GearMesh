@@ -162,7 +162,8 @@ jobs:
           cache-key: security
       
       - name: Install cargo-audit
-        run: cargo install cargo-audit
+        # --locked: a transitive MSRV bump must not break the pinned toolchain.
+        run: cargo install --locked cargo-audit
       
       - name: Run security audit
         run: cargo audit
@@ -182,7 +183,8 @@ jobs:
           cache-key: dependencies
       
       - name: Install cargo-deny
-        run: cargo install cargo-deny
+        # --locked: a transitive MSRV bump must not break the pinned toolchain.
+        run: cargo install --locked cargo-deny
       
       - name: Check licenses and advisories
         run: cargo deny check
