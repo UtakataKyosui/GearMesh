@@ -106,7 +106,8 @@ mount or modify the host checkout. The two legacy scripts
 ## Separate checks and known limitations
 
 - Security Audit, cargo-deny, rustdoc and Aeneas translation remain separate
-  CI checks. Security Audit's known installation issue is tracked by #23.
+  CI checks. Both install their tool with `--locked` so that a transitive MSRV
+  bump cannot break them under the pinned toolchain.
 - Every Clippy/test invocation uses `--all-features`, which cannot prove that
   a consumer depending on `gear-mesh` without features can build. Step 2 of the
   standard verification is the only check covering default features (#26).
