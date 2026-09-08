@@ -5,12 +5,16 @@
 
 mod docs;
 mod plugin;
+mod stamped;
+mod state;
 mod type_utils;
 mod types;
 mod validation;
 
 pub use docs::*;
 pub use plugin::*;
+pub use stamped::*;
+pub use state::*;
 pub use type_utils::*;
 pub use types::*;
 pub use validation::*;

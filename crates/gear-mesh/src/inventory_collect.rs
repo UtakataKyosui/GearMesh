@@ -166,7 +166,7 @@ fn collect_registered_types() -> Vec<crate::GearMeshType> {
         .collect()
 }
 
-fn write_output(
+pub(crate) fn write_output(
     path: &std::path::Path,
     content: &str,
     use_cache: bool,

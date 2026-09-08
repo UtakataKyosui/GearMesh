@@ -288,7 +288,7 @@ impl TypeScriptGenerator {
     }
 
     /// TypeRefからTypeScript型文字列へ変換
-    fn type_ref_to_typescript(&self, type_ref: &TypeRef) -> String {
+    pub fn type_ref_to_typescript(&self, type_ref: &TypeRef) -> String {
         if let Some(transformed) = self.transformer_type(type_ref) {
             return transformed;
         }

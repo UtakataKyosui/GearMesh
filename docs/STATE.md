@@ -1,8 +1,9 @@
-# State Slots (Design Proposal)
+# State Slots
 
-**Status**: Proposal — not implemented. This document records the design decision
-for how GearMesh should define *state values* shared between Rust and the UI,
-before any code is written.
+**Status**: Phase 1 implemented — read-only projection. Phases 2 and 3 are still
+proposals; see [Phased rollout](#9-phased-rollout). This document records the
+design decision for how GearMesh defines *state values* shared between Rust and
+the UI, and why it is shaped the way it is.
 
 **Scope**: Applies to desktop (Tauri) and client/server (axum) setups alike. The
 IR described here is transport-agnostic; transports fill in the read/write/notify
@@ -218,19 +219,93 @@ Consistent with the existing layered architecture (see [ARCHITECTURE.md](ARCHITE
 
 ## 9. Phased rollout
 
-1. **Read-only projection.** `StateSlot` IR, `readonly` slots, generated
-   `get` + `subscribe`, `Stamped<T>` and revisions. One-way projection is
-   complete and useful at this point; the phase is a natural stopping point.
+1. **Read-only projection — done.** `StateSlot` IR, `readonly` slots, generated
+   `get` + `subscribe` + `watch`, `Stamped<T>` and revisions. One-way projection
+   is complete and useful at this point. See [Using it](#91-using-it) below.
 2. **Writes.** `set` with `Promise<void>`, argument-key derivation, revision
-   bumping on the Rust side.
+   bumping on the Rust side. `#[state(set = "...")]` is rejected with a compile
+   error until this lands, so no slot silently loses its writer.
 3. **Framework adapters.** React `useSyncExternalStore` binding first.
+
+### 9.1 Using it
+
+Declare the slots on the state container:
+
+```rust
+use gear_mesh::{GearMesh, GearMeshState, Revision, Stamped};
+
+#[derive(GearMesh)]
+enum Theme { Light, Dark, System }
+
+#[derive(GearMeshState)]
+struct AppState {
+    /// The theme the user selected.
+    #[state]
+    theme: Theme,
+
+    /// The theme actually rendered, after resolving the OS setting.
+    #[state(readonly)]
+    effective_theme: ResolvedTheme,
+
+    /// Not projected: no `#[state]`, no slot.
+    listeners: usize,
+}
+```
+
+Generate the projection alongside the types:
+
+```rust
+gear_mesh::generate_types_to_dir("../frontend/src/types")?;
+gear_mesh::generate_state("../frontend/src/types/state.ts", Some("./index"))?;
+```
+
+Stamp the values the commands return and the events carry, so the UI can order
+them:
+
+```rust
+static THEME_REV: Revision = Revision::new();
+
+#[tauri::command]
+fn get_theme(state: tauri::State<Mutex<AppState>>) -> Stamped<Theme> {
+    THEME_REV.stamp(state.lock().unwrap().theme)
+}
+
+fn set_theme(app: &AppHandle, state: &Mutex<AppState>, theme: Theme) {
+    state.lock().unwrap().theme = theme;
+    app.emit("state://theme/changed", THEME_REV.bump(theme)).ok();
+}
+```
+
+On the UI side, register a transport once and project:
+
+```ts
+import { setStateTransport, theme } from "./types/state";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+
+setStateTransport({
+  read: (command) => invoke(command),
+  subscribe: (event, handler) => listen(event, (e) => handler(e.payload as never)),
+});
+
+// `watch` reads the current value, follows changes, and drops anything older
+// than the newest revision already delivered.
+const stop = await theme.watch((value) => {
+  document.documentElement.dataset["theme"] = value;
+});
+```
 
 ## 10. Open questions
 
 - **Command existence checking.** Deriving names is only half the win if a typo in
   an explicit `get = "..."` still fails at runtime. Emitting a reference to the
   command function from the macro would catch it at compile time; whether that is
-  workable with `#[tauri::command]`'s expansion needs a spike.
+  workable with `#[tauri::command]`'s expansion needs a spike. Phase 1 ships
+  without it.
+- **Stamping is still manual.** Phase 1 gives the Rust side `Revision` and
+  `Stamped<T>` but does not generate the commands that use them, so a slot whose
+  command forgets to stamp compiles fine and loses its ordering guarantee. Phase
+  2 owns the revision bump, which is the natural place to close this.
 - **Revision storage.** Per-slot counter versus one counter for the whole
   container. Per-slot is more precise; shared is cheaper and still monotonic.
 - **Locking.** Slots are declared on a plain struct, but the runtime value is

@@ -14,6 +14,7 @@ Next-generation Rust to TypeScript type definition sharing library.
 | **Validation** | Generate runtime validation functions |
 | **Zod Schema** | Generate Zod schemas for runtime validation |
 | **BigInt Support** | Automatically use `bigint` for `u64`/`i64` |
+| **State Slots** | Project Rust-owned state values into the UI, one slot per value |
 
 ## Installation
 
@@ -181,6 +182,66 @@ export const TransactionSchema = z.object({
 });
 ```
 
+## State Slots
+
+Types are not the only knowledge shared across the boundary. A state value that
+Rust owns also needs a way to be read and a way to announce that it changed —
+command and event names that are otherwise written by hand on both sides, with
+no type checking to catch a rename.
+
+Declare the slots on the struct that holds the state, and the names come from
+one key:
+
+```rust
+use gear_mesh::{GearMesh, GearMeshState};
+
+#[derive(GearMesh)]
+enum Theme { Light, Dark, System }
+
+#[derive(GearMeshState)]
+struct AppState {
+    /// The theme the user selected.
+    #[state]
+    theme: Theme,
+
+    /// Not projected: no `#[state]`, no slot.
+    listeners: usize,
+}
+```
+
+```rust
+gear_mesh::generate_state("../frontend/src/types/state.ts", Some("./index"))
+    .expect("Failed to generate state slots");
+```
+
+The generated projection holds no value of its own — it reads through to Rust:
+
+```typescript
+export const theme: ReadonlyStateSlot<Theme> = readonlySlot<Theme>(
+    "theme",
+    "state://theme/get",
+    "state://theme/changed",
+);
+```
+
+```typescript
+setStateTransport({
+  read: (command) => invoke(command),
+  subscribe: (event, handler) => listen(event, (e) => handler(e.payload as never)),
+});
+
+// Reads the current value, follows changes, and drops anything older than the
+// newest revision already delivered — so a slow initial read can never
+// overwrite a change that arrived first.
+const stop = await theme.watch((value) => {
+  document.documentElement.dataset["theme"] = value;
+});
+```
+
+Slots are read-only: the UI projects the value, it never keeps a second
+authoritative copy of it. Writable slots are the next phase. See
+[docs/STATE.md](docs/STATE.md) for the design and the rationale.
+
 ## Comparison with Existing Crates
 
 
@@ -192,12 +253,13 @@ export const TransactionSchema = z.object({
 | Zod Schema | ❌ | ❌ | ❌ | ✅ |
 | Validation embedding | ❌ | ❌ | ❌ | ✅ |
 | Auto BigInt | Manual | Manual | Manual | ✅ Auto |
+| State slots | ❌ | ❌ | ❌ | ✅ |
 
 ## Crate Structure
 
 - `gear-mesh` - Main crate with re-exports
 - `gear-mesh-core` - Intermediate representation (IR)
-- `gear-mesh-derive` - `#[derive(GearMesh)]` proc-macro
+- `gear-mesh-derive` - `#[derive(GearMesh)]` and `#[derive(GearMeshState)]` proc-macros
 - `gear-mesh-generator` - TypeScript code generator
 
 ## Implementation Status
@@ -210,6 +272,7 @@ gear-mesh v0.1.0 implements:
 - ✅ BigInt support
 - ✅ Zod Schema generation
 - ✅ Validation rules
+- ✅ State slots (read-only projection)
 
 See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for detailed status and [docs/FUTURE_ISSUES.md](docs/FUTURE_ISSUES.md) for planned features.
 

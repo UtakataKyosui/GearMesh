@@ -39,13 +39,15 @@ gear-mesh-generator (+ facade)
 
 **Key modules**:
 - `types.rs`: Type definitions and IR
+- `state.rs`: State slot IR (see [STATE.md](STATE.md))
+- `stamped.rs`: `Stamped<T>` and `Revision`, the ordering primitives for state values
 - `validation.rs`: Validation rules
 - `docs.rs`: Doc comment parsing and conversion
 
 ### gear-mesh-derive
 **Procedural macro**
 
-- `#[derive(GearMesh)]` implementation
+- `#[derive(GearMesh)]` and `#[derive(GearMeshState)]` implementations
 - Parses Rust types using `syn`
 - Extracts attributes (`#[gear_mesh(...)]`, `#[validate(...)]`)
 - Converts to IR
@@ -54,6 +56,7 @@ gear-mesh-generator (+ facade)
 - `lib.rs`: Macro entry point
 - `parser.rs`: Type parsing
 - `attributes.rs`: Attribute parsing
+- `state.rs`: `#[state(...)]` slot parsing
 
 **Note**: Must remain separate due to Rust proc-macro constraints (proc-macro crates can only export macro functions).
 
@@ -71,6 +74,7 @@ gear-mesh-generator (+ facade)
 - `typescript.rs`: Main generator
 - `branded.rs`: Branded type generation
 - `validation_gen.rs`: Validation generation
+- `state_gen.rs`: State slot projection
 - `lib.rs`: Facade re-exports
 
 ---
@@ -173,6 +177,7 @@ gear-mesh-generator (+ facade)
 - JSDoc generation
 - Zod schema generation
 - Validation rules
+- State slots (read-only projection)
 
 ### 📝 Future Work
 
@@ -268,7 +273,7 @@ See [TESTING.md](TESTING.md) for details.
 
 ## References
 
-- [STATE.md](STATE.md): State slot design proposal
+- [STATE.md](STATE.md): State slots — how Rust-owned state values are defined and projected
 - [TESTING.md](TESTING.md): Test documentation
 - [MOONREPO.md](MOONREPO.md): Moonrepo integration
 - [README.md](../README.md): User guide
