@@ -7,6 +7,8 @@ try {
     throw new Error("Unset UPDATE_SNAPSHOTS before running verification.");
   }
   run("Rust formatting", "cargo", ["fmt", "--all", "--", "--check"]);
+  // Every other Rust check uses --all-features, so default features need their own guard.
+  run("Rust default features", "cargo", ["check", "--workspace", "--all-targets"]);
   run("Rust Clippy", "cargo", ["clippy", "--workspace", "--all-targets", "--all-features", "--", "-D", "warnings"]);
   run("Rust tests and generator snapshots", "cargo", ["test", "--workspace", "--all-features"]);
   run("Rust to TypeScript integration", process.execPath, [join(root, "scripts/check-codegen.mjs")]);

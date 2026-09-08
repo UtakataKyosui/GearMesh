@@ -14,9 +14,10 @@ npm test
 This runs, in order:
 
 1. `cargo fmt --all -- --check`
-2. `cargo clippy --workspace --all-targets --all-features -- -D warnings`
-3. `cargo test --workspace --all-features` (including generator snapshots)
-4. `npm run test:codegen`'s underlying script: derive expansion, generation,
+2. `cargo check --workspace --all-targets` (default features)
+3. `cargo clippy --workspace --all-targets --all-features -- -D warnings`
+4. `cargo test --workspace --all-features` (including generator snapshots)
+5. `npm run test:codegen`'s underlying script: derive expansion, generation,
    TypeScript consumer check, and comparison with `types.expected.ts`
 
 Any failed subprocess, missing output/expectation, type error or snapshot
@@ -106,11 +107,9 @@ mount or modify the host checkout. The two legacy scripts
 
 - Security Audit, cargo-deny, rustdoc and Aeneas translation remain separate
   CI checks. Security Audit's known installation issue is tracked by #23.
-- A default-feature `cargo build -p gear-mesh` currently fails because
-  `cache.rs` uses serde/serde_json while those dependencies are enabled by
-  the `cli` feature. This predates the environment work. The standard
-  verification and fixture use `--all-features`, matching existing CI;
-  passing them does not establish default-feature build support.
+- Every Clippy/test invocation uses `--all-features`, which cannot prove that
+  a consumer depending on `gear-mesh` without features can build. Step 2 of the
+  standard verification is the only check covering default features (#26).
 - The root npm lockfile is tracked. Cargo lockfiles follow the repository's
   existing ignored-lockfile policy, so Rust dependency resolution can vary
   between clean installations.
