@@ -268,6 +268,7 @@ See [TESTING.md](TESTING.md) for details.
 
 ## References
 
+- [STATE.md](STATE.md): State slot design proposal
 - [TESTING.md](TESTING.md): Test documentation
 - [MOONREPO.md](MOONREPO.md): Moonrepo integration
 - [README.md](../README.md): User guide
