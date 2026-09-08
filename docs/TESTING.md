@@ -132,6 +132,7 @@ Node.js 22.12.0/npm 10.9.0; their execution is not implied by the local result.
 Docker verification was attempted but did not complete: the image build
 stalled at the npm setup step, and a separate Node container was also very slow
 to start Node/npm. The task's build and diagnostic container were stopped.
-The Docker path therefore remains unverified in this environment. No remote
-CI run was triggered, and fresh-session Skill discovery still needs to be
-confirmed when opening the next Codex session.
+Local Docker execution remains unverified in this environment. PR #25 adds a
+`Docker Verification` CI job to exercise that path on a clean Linux runner.
+The Skill was subsequently exposed in Codex's available-skill list. The PR's
+`Standard Verification` job also passed with Node.js 22.12.0/npm 10.9.0.

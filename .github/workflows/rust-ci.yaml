@@ -20,6 +20,7 @@ on:
       - '.prototools'
       - '.moon/**'
       - 'moon.yml'
+      - '.dockerignore'
       - '.github/workflows/rust-ci.yaml'
   pull_request:
     branches: [ main, develop ]
@@ -40,6 +41,7 @@ on:
       - '.prototools'
       - '.moon/**'
       - 'moon.yml'
+      - '.dockerignore'
       - '.github/workflows/rust-ci.yaml'
 
 concurrency:
@@ -133,6 +135,17 @@ jobs:
 
       - name: Run standard verification
         run: npm test
+
+  # Exercise the optional local Docker path on a clean Linux runner too.
+  docker:
+    name: Docker Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run standard verification in Docker
+        run: bash tests/e2e/run-docker-test.sh
 
   # Security audit
   security:
